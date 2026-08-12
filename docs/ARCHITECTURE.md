@@ -44,7 +44,7 @@ Profile fields are filled conservatively and should not churn on every scan.
 
 ### Relationships
 
-Stored separately from NPCs as directional edges.
+Stored separately from NPCs as directional edges. The **chat** owns one relationship axis model; individual edges store only values for those active axes. This keeps relationship scores comparable and gives extraction one consistent schema per campaign.
 
 ### Knowledge
 
