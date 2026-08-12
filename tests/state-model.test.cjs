@@ -86,6 +86,10 @@ const context = {
 const html = fs.readFileSync(path.join(__dirname, '..', 'ui', 'panel.html'), 'utf8');
 const matches = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 if (!matches.length) throw new Error('No panel script found.');
+assert(!html.includes('name="axisPreset"'), 'Relationship editor must not expose per-edge axis presets.');
+assert(!html.includes('name="thirdAxisEnabled"'), 'Relationship editor must not expose per-edge third-axis mode.');
+assert(html.includes('id="ss-chat-preset"'), 'Chat settings must own the relationship preset.');
+assert(html.includes('id="ss-chat-third-axis"'), 'Chat settings must own third-axis mode.');
 vm.runInNewContext(matches.at(-1)[1], context, { filename: 'ui/panel.html' });
 
 const {
@@ -95,6 +99,9 @@ const {
   normalizeNpc,
   normalizeRelationship,
   relationshipAxisNames,
+  relationshipAxesForConfig,
+  remapRelationshipAxes,
+  applyRelationshipModel,
   validateRelationship,
   mergeNpcRecords,
   migrateLivingWorldState,
@@ -102,14 +109,16 @@ const {
   relationshipEdgeKey,
 } = harness;
 
-assert.strictEqual(SCHEMA_VERSION, 2, 'Phase 1 schema should be v2.');
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+
+assert.strictEqual(SCHEMA_VERSION, 3, 'Chat-wide relationship schema should be v3.');
 
 {
   const state = newState();
   assert.strictEqual(state.config.updateMode, 'manual');
   assert.strictEqual(state.config.contextInjectionEnabled, false);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(relationshipAxisNames('general', false))), ['Trust', 'Affinity']);
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(relationshipAxisNames('dating', true))), ['Trust', 'Attraction', 'Investment']);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(relationshipAxisNames('dating', true))), ['Trust', 'Affinity', 'Attraction']);
 }
 
 {
@@ -122,7 +131,7 @@ assert.strictEqual(SCHEMA_VERSION, 2, 'Phase 1 schema should be v2.');
     arcs: []
   };
   const normalized = normalizeState(oldScaffold);
-  assert.strictEqual(normalized.schemaVersion, 2);
+  assert.strictEqual(normalized.schemaVersion, 3);
   assert.strictEqual(normalized.npcs[0].id, 'npc-a');
   assert.strictEqual(normalized.npcs[0].name, 'Reagan Mercer');
   assert.deepStrictEqual(JSON.parse(JSON.stringify(normalized.npcs[0].aliases)), []);
@@ -133,9 +142,46 @@ assert.strictEqual(SCHEMA_VERSION, 2, 'Phase 1 schema should be v2.');
     id: 'rel-1', sourceNpcId: 'npc-a', targetType: 'protagonist', axisPreset: 'dating',
     thirdAxisEnabled: true, axes: { Trust: 8, Attraction: 7, Investment: 4 }
   }, { relationshipPreset: 'general', optionalThirdAxis: false });
-  assert.strictEqual(relationship.axisPreset, 'dating', 'Existing edge keeps its own preset.');
-  assert.strictEqual(relationship.axes.Attraction, 7);
-  assert.strictEqual(relationship.axes.Investment, 4);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(relationship.axes)), { Trust: 8, Affinity: 5 }, 'Chat config, not edge metadata, owns active axes.');
+  assert.strictEqual('axisPreset' in relationship, false, 'Relationship record must not own a preset.');
+  assert.strictEqual('thirdAxisEnabled' in relationship, false, 'Relationship record must not own third-axis mode.');
+}
+
+{
+  const v2 = normalizeState({
+    schemaVersion: 2,
+    config: { relationshipPreset: 'dating', optionalThirdAxis: true },
+    npcs: [{ id: 'npc-a', name: 'A' }],
+    relationships: [{
+      id: 'rel-old', sourceNpcId: 'npc-a', targetType: 'protagonist',
+      axisPreset: 'dating', thirdAxisEnabled: true,
+      axes: { Trust: 8, Attraction: 7, Investment: 4 }
+    }]
+  });
+  assert.strictEqual(v2.schemaVersion, 3);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(v2.relationships[0].axes)), { Trust: 8, Affinity: 5, Attraction: 7 }, 'v2 migration should honor the chat model and preserve same-named values.');
+  assert.strictEqual('axisPreset' in v2.relationships[0], false);
+  assert(v2.diagnostics.some((d) => /chat-wide axis model/i.test(d.text)), 'v2 migration should record a diagnostic.');
+}
+
+{
+  const state = newState();
+  state.config.relationshipPreset = 'general';
+  state.config.optionalThirdAxis = true;
+  state.npcs = [normalizeNpc({ id: 'npc-a', name: 'A' })];
+  state.relationships = [normalizeRelationship({
+    id: 'rel-a', sourceNpcId: 'npc-a', targetType: 'protagonist',
+    axes: { Trust: 8, Affinity: 6, Respect: 7 }
+  }, state.config)];
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(relationshipAxesForConfig(state.config))), ['Trust', 'Affinity', 'Respect']);
+  applyRelationshipModel(state, 'dating', true);
+  assert.strictEqual(state.config.relationshipPreset, 'dating');
+  assert.strictEqual(state.relationships[0].axes.Trust, 8);
+  assert.strictEqual(state.relationships[0].axes.Affinity, 6);
+  assert.strictEqual(state.relationships[0].axes.Attraction, 5, 'Newly introduced axis resets to neutral rather than inheriting unrelated meaning.');
+  assert.strictEqual('Respect' in state.relationships[0].axes, false);
+  applyRelationshipModel(state, 'dating', false);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(state.relationships[0].axes)), { Trust: 8, Affinity: 6 });
 }
 
 {
