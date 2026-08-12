@@ -1,0 +1,32 @@
+name: Reconstruct StoryState panel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.transport/panel.ready'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-panel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Apply verified dev3 panel patch
+        run: python .transport/patch_panel.py
+
+      - name: Verify exact panel blob
+        run: test "$(git hash-object ui/panel.html)" = "0512e53bdac1ffe7cb0f52e6b3672e4a1b528724"
+
+      - name: Commit reconstructed panel
+        run: |
+          git config user.name "StoryState Build"
+          git config user.email "actions@users.noreply.github.com"
+          git add ui/panel.html
+          git diff --cached --quiet && exit 0
+          git commit -m "refactor: make relationship axes chat-wide"
+          git push
