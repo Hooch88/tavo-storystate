@@ -1,0 +1,9 @@
+{
+  "name": "tavo-storystate",
+  "version": "0.1.0-dev.2",
+  "private": true,
+  "scripts": {
+    "test": "node tests/state-model.test.cjs",
+    "check": "node --check entry.js && node tests/state-model.test.cjs"
+  }
+}
