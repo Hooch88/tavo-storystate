@@ -50,13 +50,17 @@ Supported automatic directions:
 
 Never infer Protagonist → NPC feelings.
 
-Default relationship scale is 0–10 with two axes and an optional third axis.
+Relationship axes are a **per-chat setting**, never a per-edge setting. Every relationship in a chat uses the same model so scores stay comparable and Phase 2 extraction has one schema to follow.
+
+Default relationship scale is 0–10 with two shared axes and an optional third axis.
 
 Presets:
 
-- General: Trust / Affinity / Commitment;
-- Dating: Trust / Attraction / Investment;
-- Fantasy: Trust / Loyalty / Respect.
+- General: Trust / Affinity / Respect;
+- Social / Romance: Trust / Affinity / Attraction;
+- Adventure / Faction: Trust / Affinity / Loyalty.
+
+`Trust` and `Affinity` remain stable across presets. Switching the chat model preserves same-named axes; a newly introduced third axis starts at neutral `5/10` rather than inheriting an unrelated metric.
 
 Most scenes produce no score change. Normal meaningful changes are ±1; unusually significant changes may be ±2. Every automatic change requires saved-message evidence.
 
