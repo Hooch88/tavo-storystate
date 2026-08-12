@@ -39,9 +39,24 @@ Stable identity/characterization fields manually corrected by the user are recor
 
 Residence remains separately evidence-gated. A manually set residence has no fabricated source-message ID and should be treated as authoritative unless the user changes it.
 
-### Relationship axis ownership
+## Chat relationship model
 
-`config.relationshipPreset` and `config.optionalThirdAxis` are defaults for **new** edges. Every relationship stores its own `axisPreset` and `thirdAxisEnabled`, so changing plugin defaults never silently relabels existing relationship history.
+Relationship axis ownership lives in chat-scoped config, not in each relationship record.
+
+```json
+{
+  "relationshipPreset": "general",
+  "optionalThirdAxis": false
+}
+```
+
+Presets:
+
+- `general`: Trust / Affinity / Respect
+- `dating`: Trust / Affinity / Attraction
+- `fantasy`: Trust / Affinity / Loyalty
+
+With the optional third axis disabled, every preset uses only `Trust` and `Affinity`. Changing the chat model remaps every relationship edge at once, preserves axes with the same meaning, and initializes a newly introduced axis to `5/10`. Relationship records never store their own preset or third-axis mode.
 
 ## Relationship
 
@@ -51,8 +66,6 @@ Residence remains separately evidence-gated. A manually set residence has no fab
   "sourceNpcId": "npc-reagan",
   "targetType": "protagonist",
   "targetNpcId": null,
-  "axisPreset": "general",
-  "thirdAxisEnabled": false,
   "axes": {
     "Trust": 4,
     "Affinity": 6
