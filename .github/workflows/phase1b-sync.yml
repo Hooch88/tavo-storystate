@@ -1,0 +1,57 @@
+name: Sync StoryState Phase 1B
+
+on:
+  push:
+    branches:
+      - agent/phase1b-final
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase1b-final
+
+      - name: Apply verified Phase 1B patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .transport/dev4.patch.gz.b64 > /tmp/dev4.patch.gz
+          gzip -dc /tmp/dev4.patch.gz > /tmp/dev4.patch
+          patch -p1 < /tmp/dev4.patch
+
+      - name: Run checks
+        run: npm run check
+
+      - name: Verify exact file hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object entry.js)" = "1420c2d9ca0ec3b05f8dc1728cc77d9002fb0429"
+          test "$(git hash-object ui/panel.html)" = "149c784d30674f5001160c077a0536d4daf4cbef"
+          test "$(git hash-object manifest.json)" = "38a4cdf17fcb502d40d4aa1a8d5234eb2bfb0d36"
+          test "$(git hash-object package.json)" = "f03e7aecc7a0906d5fe5f215072cae8f806c133e"
+          test "$(git hash-object README.md)" = "07e376aa29e22eaf2609e535205939e96d0cd654"
+          test "$(git hash-object docs/ROADMAP.md)" = "4a5fcbf6dcd2c7532e69beb573bf096292c3c6f9"
+          test "$(git hash-object docs/PROJECT_PLAN.md)" = "5eb2455867bb76a76e134cbfb6599c39703897f1"
+          test "$(git hash-object docs/ARCHITECTURE.md)" = "0e3f42a636abf3cb7a03dfcd6794b0531f955b1a"
+          test "$(git hash-object docs/TAVO_API_NOTES.md)" = "bb0995fee13d47a2ee819edb6e8dec829e2324a3"
+          test "$(git hash-object docs/TEST_PLAN.md)" = "2d213c8a8ac260e73178cd82df354ef29d38dde8"
+          test "$(git hash-object tests/state-model.test.cjs)" = "7edb1d2b6ec855c04770263d6d4a3b4a11160c6f"
+          test "$(git hash-object tests/context-injection.test.cjs)" = "e5c8b24e0baf7d23eecf29dcb16f7b281688a88a"
+
+      - name: Commit clean Phase 1B source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .transport .github/workflows/phase1b-sync.yml
+          git config user.name "Hooch88"
+          git config user.email "155849308+Hooch88@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: enable StoryState narrator influence"
+          git push origin HEAD:agent/phase1b-final
