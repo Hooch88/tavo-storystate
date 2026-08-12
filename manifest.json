@@ -1,0 +1,36 @@
+{
+  "specVersion": 2,
+  "id": "com.hooch88.tavo-storystate",
+  "name": { "$t": "plugin.name" },
+  "version": "0.1.0-dev.2",
+  "minAppVersion": "0.93.0",
+  "entry": "entry.js",
+  "author": "Hooch88",
+  "description": { "$t": "plugin.description" },
+  "localization": {
+    "defaultLocale": "en",
+    "resources": {
+      "en": "locales/en.json"
+    }
+  },
+  "permissions": [
+    "variable",
+    "message",
+    "generate"
+  ],
+  "contributes": {
+    "sidebar": [
+      {
+        "id": "open-storystate",
+        "label": { "$t": "actions.openStoryState" }
+      }
+    ],
+    "htmlFragments": [
+      {
+        "id": "storystate-panel",
+        "src": "ui/panel.html",
+        "mount": "/chat/body/end"
+      }
+    ]
+  }
+}
