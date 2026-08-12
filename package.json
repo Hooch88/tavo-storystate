@@ -1,6 +1,6 @@
 {
   "name": "tavo-storystate",
-  "version": "0.1.0-dev.2",
+  "version": "0.1.0-dev.3",
   "private": true,
   "scripts": {
     "test": "node tests/state-model.test.cjs",
