@@ -22,8 +22,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 -d .transport/dev4.patch.gz.b64 > /tmp/dev4.patch.gz
-          gzip -dc /tmp/dev4.patch.gz > /tmp/dev4.patch
+          base64 -d .transport/dev4.patch.xz.b64 > /tmp/dev4.patch.xz
+          xz -dc /tmp/dev4.patch.xz > /tmp/dev4.patch
           patch -p1 < /tmp/dev4.patch
 
       - name: Run StoryState checks
