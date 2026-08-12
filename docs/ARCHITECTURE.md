@@ -46,6 +46,8 @@ Profile fields are filled conservatively and should not churn on every scan.
 
 Stored separately from NPCs as directional edges. The **chat** owns one relationship axis model; individual edges store only values for those active axes. This keeps relationship scores comparable and gives extraction one consistent schema per campaign.
 
+During `generation:prepare`, StoryState translates scores into behavioral tendencies. Directionality is explicit: source NPC → target. No reciprocal state is inferred. Relationship guidance influences conduct but cannot override established characterization, immediate circumstances, or agency.
+
 ### Knowledge
 
 Stored separately from both NPCs and relationships. Knowledge is not automatically equivalent to world truth.
@@ -66,10 +68,11 @@ Selection must be local/deterministic before injection or extraction context ass
 
 Signals include:
 
-- canonical name match;
-- alias match;
+- canonical name boundary match;
+- alias boundary match;
 - pinned NPC;
-- recent meaningful NPC IDs;
+- names/aliases found in the recent visible-message window;
+- recent meaningful NPC IDs after Phase 2;
 - relationship adjacency to currently relevant NPCs;
 - active arc actor references later.
 

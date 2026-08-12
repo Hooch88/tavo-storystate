@@ -1,6 +1,6 @@
 # Tavo StoryState
 
-**Status:** Pre-alpha Phase 1 build (`0.1.0-dev.3`)
+**Status:** Pre-alpha Phase 1B build (`0.1.0-dev.4`)
 
 StoryState is a Tavo plugin project for persistent simulation state in long-running AI role-play. It is designed for narrator/simulation-master workflows where NPCs are created organically rather than represented by individual character cards.
 
@@ -34,7 +34,10 @@ Phase 1 now implements the persistent manual state foundation on top of the init
 - manual NPC and relationship editing;
 - JSON export/import and recovery snapshots;
 - explicit, non-destructive Living World 0.2.2 import;
-- context injection disabled by default;
+- relevant NPC and relationship state now influences narration through model-only context injection;
+- narrator influence is enabled by default per chat and can be disabled in StoryState Settings;
+- relationship values are translated into behavioral tendencies rather than injected as unexplained numbers;
+- recent visible messages are used locally for relevance so pronoun follow-ups can retain the right NPC state;
 - no extraction yet (Phase 2).
 
 ## Repository lineage
@@ -63,4 +66,4 @@ The manifest must remain at the package root.
 
 ## Safety
 
-Use development builds only in a backup/disposable Tavo chat. State-changing extraction is not implemented in `0.1.0-dev.3`. Phase 1 should be device-tested in a backup/disposable chat before Phase 2 begins.
+Use development builds only in a backup/disposable Tavo chat. State-changing extraction is not implemented in `0.1.0-dev.4`. Phase 1B should be device-tested in a backup/disposable chat before Phase 2 begins.

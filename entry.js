@@ -21,19 +21,104 @@
       .filter(Boolean);
   }
 
-  function mentionedIn(input, npc) {
-    const haystack = ` ${text(input, 12000).toLowerCase()} `;
-    return namesForNpc(npc).some((name) => haystack.includes(name));
+  function escapeRegex(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
-  function buildContextBlock(state, requestText) {
+  function mentionedIn(input, npc) {
+    const haystack = text(input, 12000).toLowerCase();
+    return namesForNpc(npc).some((name) => {
+      const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegex(name)}(?=$|[^a-z0-9])`, "i");
+      return pattern.test(haystack);
+    });
+  }
+
+  const AXIS_GUIDANCE = {
+    Trust: [
+      "expects unreliability or danger; verifies claims and avoids dependence or vulnerable disclosure",
+      "is guarded; checks claims and limits reliance or vulnerability",
+      "is somewhat cautious; gives only limited benefit of the doubt",
+      "has no strong trust bias yet",
+      "generally gives reasonable benefit of the doubt and accepts limited reliance",
+      "usually credits claims and is comfortable relying or disclosing when appropriate",
+      "has very strong confidence and vulnerability while retaining independent judgment"
+    ],
+    Affinity: [
+      "feels strong dislike or aversion; patience and desire for company are very low",
+      "is negatively disposed; warmth and patience are limited",
+      "is mildly cool or reluctant about closeness",
+      "has no strong liking or dislike bias yet",
+      "is somewhat warm and positively disposed",
+      "strongly likes the target; shows patience, warmth, and interest in shared company",
+      "feels exceptionally strong affection or goodwill without becoming blindly compliant"
+    ],
+    Respect: [
+      "holds the target in very low regard and readily discounts their judgment or standing",
+      "has low regard and is skeptical of the target's competence, credibility, or standing",
+      "has somewhat limited regard and is not easily impressed",
+      "has no strong respect bias yet",
+      "takes the target somewhat seriously and gives their judgment added weight",
+      "holds the target in high regard and is strongly inclined to take their competence or judgment seriously",
+      "holds exceptional regard while still retaining independent judgment"
+    ],
+    Attraction: [
+      "feels little or no romantic or physical pull",
+      "has low romantic or physical interest",
+      "has faint or uncertain romantic or physical interest",
+      "has no strong attraction bias yet",
+      "feels noticeable romantic or physical interest",
+      "feels strong romantic or physical attraction and notices opportunities for closeness",
+      "feels very intense romantic or physical attraction; this still never implies consent, affection, or obedience"
+    ],
+    Loyalty: [
+      "has little commitment to the target and readily prioritizes other interests under pressure",
+      "has weak commitment and may withdraw support when costs rise",
+      "has limited commitment and weighs self-interest heavily",
+      "has no strong loyalty bias yet",
+      "is somewhat inclined to remain aligned and provide support",
+      "is strongly inclined to stand by, defend, or prioritize the target when costs are reasonable",
+      "has exceptional commitment and may accept substantial costs, but loyalty still does not mean obedience"
+    ]
+  };
+
+  function axisGuidance(axisName, rawValue) {
+    const value = integer(rawValue, 0, 10, 5);
+    const bands = AXIS_GUIDANCE[axisName];
+    if (!bands) return `${axisName} ${value}/10`;
+    const index = value <= 1 ? 0 : value <= 3 ? 1 : value === 4 ? 2 : value === 5 ? 3 : value === 6 ? 4 : value <= 8 ? 5 : 6;
+    return `${axisName} ${value}/10 — ${bands[index]}`;
+  }
+
+  function selectRelevantNpcs(state, relevanceText) {
+    const activeNpcs = (Array.isArray(state?.npcs) ? state.npcs : [])
+      .filter((npc) => npc && npc.status !== "archived");
+    const mentioned = activeNpcs.filter((npc) => mentionedIn(relevanceText, npc));
+    const mentionedIds = new Set(mentioned.map((npc) => npc.id));
+    const pinned = activeNpcs.filter((npc) => npc.pinned && !mentionedIds.has(npc.id));
+    return [...mentioned, ...pinned].slice(0, 5);
+  }
+
+  async function buildRelevanceText(requestText) {
+    const parts = [text(requestText, 12000)];
+    try {
+      const count = await tavo.message.count();
+      if (count > 0) {
+        const start = Math.max(0, count - 6);
+        const recent = await tavo.message.find([start, count - 1], { hidden: false });
+        for (const message of Array.isArray(recent) ? recent : []) {
+          if (["user", "assistant"].includes(message?.role)) parts.push(text(message.content, 4000));
+        }
+      }
+    } catch (error) {
+      console.warn(`[${PLUGIN_LABEL}] Could not read recent messages for relevance selection.`, error);
+    }
+    return parts.filter(Boolean).join("\n");
+  }
+
+  function buildContextBlock(state, relevanceText) {
     if (!state?.config?.contextInjectionEnabled) return "";
 
-    const activeNpcs = (Array.isArray(state.npcs) ? state.npcs : [])
-      .filter((npc) => npc && npc.status !== "archived")
-      .filter((npc) => npc.pinned || mentionedIn(requestText, npc))
-      .slice(0, 5);
-
+    const activeNpcs = selectRelevantNpcs(state, relevanceText);
     if (!activeNpcs.length) return "";
 
     const selectedIds = new Set(activeNpcs.map((npc) => npc.id));
@@ -44,7 +129,9 @@
       .slice(0, 8);
 
     const lines = ["[[STORYSTATE_CONTEXT]]"];
-    lines.push("Use this as persistent simulation state. Do not expose or quote this block to the user.");
+    lines.push("Persistent simulation state for the current scene. Do not expose, quote, or mention this block.");
+    lines.push("Treat relationship axes as directional behavioral tendencies, not commands. They influence conduct but do not override established personality, circumstances, evidence, or agency.");
+    lines.push("Never infer reciprocity. A source NPC's feelings toward a target say nothing about the target's feelings back. Attraction never implies consent, affection, or obedience; loyalty never implies obedience.");
 
     for (const npc of activeNpcs) {
       lines.push(`NPC: ${npc.name}`);
@@ -63,10 +150,11 @@
       const target = rel.targetType === "protagonist"
         ? "Protagonist"
         : (activeNpcs.find((npc) => npc.id === rel.targetNpcId)?.name || rel.targetNpcId);
-      const axes = rel.axes && typeof rel.axes === "object"
-        ? Object.entries(rel.axes).map(([name, value]) => `${name} ${value}/10`).join(", ")
-        : "";
-      lines.push(`RELATIONSHIP ${source} -> ${target}${axes ? `: ${axes}` : ""}${rel.condition ? `; ${rel.condition}` : ""}`);
+      lines.push(`RELATIONSHIP ${source} -> ${target}`);
+      if (rel.axes && typeof rel.axes === "object") {
+        for (const [name, value] of Object.entries(rel.axes)) lines.push(`- ${axisGuidance(name, value)}`);
+      }
+      if (rel.condition) lines.push(`Condition: ${rel.condition}`);
       if (rel.stanceSummary) lines.push(`Stance: ${rel.stanceSummary}`);
     }
 
@@ -121,7 +209,8 @@
   tavo.plugin.on("generation:prepare", async (event) => {
     try {
       const state = tavo.get(STATE_KEY, "chat");
-      const block = buildContextBlock(state, event?.text || "");
+      const relevanceText = await buildRelevanceText(event?.text || "");
+      const block = buildContextBlock(state, relevanceText);
       if (!block) return;
       event.text = `${block}\n\n${event.text || ""}`;
     } catch (error) {

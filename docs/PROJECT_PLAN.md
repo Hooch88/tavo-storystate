@@ -62,6 +62,16 @@ Presets:
 
 `Trust` and `Affinity` remain stable across presets. Switching the chat model preserves same-named axes; a newly introduced third axis starts at neutral `5/10` rather than inheriting an unrelated metric.
 
+Relationship values must influence narration, not merely decorate the UI. StoryState translates each active score into compact behavioral guidance before normal generation:
+
+- Trust affects reliance, disclosure, belief, vulnerability, and benefit of the doubt;
+- Affinity affects liking, warmth, patience, and desire for company;
+- Respect affects credibility, admiration, and how seriously judgment/status is taken;
+- Attraction affects romantic/physical interest but never implies consent, affection, or obedience;
+- Loyalty affects willingness to remain aligned, defend, or accept costs but never implies obedience.
+
+Scores are directional tendencies, not scripts. They do not override personality, circumstances, evidence, or character agency, and no reciprocal feeling is inferred.
+
 Most scenes produce no score change. Normal meaningful changes are ±1; unusually significant changes may be ±2. Every automatic change requires saved-message evidence.
 
 ### Knowledge & Secrets
@@ -93,7 +103,7 @@ Preserve the useful finite-arc concepts from Living World, but isolate them whil
 
 StoryState must supply compact relevant state to normal narrator requests without adding fake visible chat messages and without making another model call.
 
-Primary mechanism: Tavo installed-plugin `generation:prepare` hook.
+Primary mechanism: Tavo installed-plugin `generation:prepare` hook. Phase 1B activates this path for manually stored state before Phase 2 automatic extraction is introduced. Relevance is selected locally from the current request, a small recent-message window, aliases, and pinned NPCs.
 
 Hard default caps:
 

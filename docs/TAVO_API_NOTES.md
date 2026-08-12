@@ -21,9 +21,13 @@ Installed plugin entry scripts may register `generation:prepare` with `tavo.plug
 
 `generation:prepare` fires before the normal model request. Its mutable `event.text` is the last user message sent to the model for that request. Changes affect the model request only and do not alter the saved chat message.
 
-This is the primary StoryState context injection mechanism.
+This is the primary StoryState context injection mechanism. Phase 1B uses it for manual stored state; it adds no visible chat message and requires no second model generation.
 
 Handler failure must degrade safely: Tavo ignores invalid/failed handler changes and continues generation.
+
+## Relevance reads
+
+Installed plugin entry scripts can use `tavo.message.count()` and `tavo.message.find(...)`. Phase 1B reads only a small recent visible-message window to resolve NPC relevance for pronoun/follow-up turns. This is local host data access, not an LLM call.
 
 ## Extraction timing
 

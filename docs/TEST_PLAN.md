@@ -8,7 +8,7 @@
 - Panel opens/closes.
 - State is chat-scoped.
 - Reset affects StoryState state, not chat messages.
-- Context injection defaults OFF.
+- Narrator influence defaults ON for new and upgraded pre-v4 chats and can be disabled per chat.
 - Normal narration works with plugin enabled.
 
 ## Identity tests
@@ -53,7 +53,13 @@
 - StoryState failure does not block normal RP;
 - injection adds no visible fake chat message;
 - injection makes no extra model call;
-- injection context is capped and relevant.
+- injection context is capped and relevant;
+- recent-message relevance supports pronoun follow-ups;
+- short aliases do not match inside unrelated words;
+- low/high relationship scores produce distinct behavioral guidance;
+- directionality is explicit and reciprocity is never inferred;
+- Attraction never implies consent/affection/obedience; Loyalty never implies obedience;
+- disabling narrator influence leaves the generation request untouched.
 
 ## Knowledge tests (Phase 4)
 

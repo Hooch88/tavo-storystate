@@ -90,6 +90,7 @@ assert(!html.includes('name="axisPreset"'), 'Relationship editor must not expose
 assert(!html.includes('name="thirdAxisEnabled"'), 'Relationship editor must not expose per-edge third-axis mode.');
 assert(html.includes('id="ss-chat-preset"'), 'Chat settings must own the relationship preset.');
 assert(html.includes('id="ss-chat-third-axis"'), 'Chat settings must own third-axis mode.');
+assert(html.includes('id="ss-context-injection"'), 'Chat settings must expose narrator influence.');
 vm.runInNewContext(matches.at(-1)[1], context, { filename: 'ui/panel.html' });
 
 const {
@@ -111,12 +112,12 @@ const {
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
-assert.strictEqual(SCHEMA_VERSION, 3, 'Chat-wide relationship schema should be v3.');
+assert.strictEqual(SCHEMA_VERSION, 4, 'Narrator-influence schema should be v4.');
 
 {
   const state = newState();
   assert.strictEqual(state.config.updateMode, 'manual');
-  assert.strictEqual(state.config.contextInjectionEnabled, false);
+  assert.strictEqual(state.config.contextInjectionEnabled, true);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(relationshipAxisNames('general', false))), ['Trust', 'Affinity']);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(relationshipAxisNames('dating', true))), ['Trust', 'Affinity', 'Attraction']);
 }
@@ -131,10 +132,16 @@ assert.strictEqual(SCHEMA_VERSION, 3, 'Chat-wide relationship schema should be v
     arcs: []
   };
   const normalized = normalizeState(oldScaffold);
-  assert.strictEqual(normalized.schemaVersion, 3);
+  assert.strictEqual(normalized.schemaVersion, 4);
   assert.strictEqual(normalized.npcs[0].id, 'npc-a');
   assert.strictEqual(normalized.npcs[0].name, 'Reagan Mercer');
   assert.deepStrictEqual(JSON.parse(JSON.stringify(normalized.npcs[0].aliases)), []);
+  assert.strictEqual(normalized.config.contextInjectionEnabled, true, 'Pre-v4 chats should enable narrator influence on upgrade.');
+}
+
+{
+  const disabledV4 = normalizeState({ schemaVersion: 4, config: { contextInjectionEnabled: false } });
+  assert.strictEqual(disabledV4.config.contextInjectionEnabled, false, 'A v4 user choice to disable narrator influence must persist.');
 }
 
 {
@@ -158,7 +165,7 @@ assert.strictEqual(SCHEMA_VERSION, 3, 'Chat-wide relationship schema should be v
       axes: { Trust: 8, Attraction: 7, Investment: 4 }
     }]
   });
-  assert.strictEqual(v2.schemaVersion, 3);
+  assert.strictEqual(v2.schemaVersion, 4);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(v2.relationships[0].axes)), { Trust: 8, Affinity: 5, Attraction: 7 }, 'v2 migration should honor the chat model and preserve same-named values.');
   assert.strictEqual('axisPreset' in v2.relationships[0], false);
   assert(v2.diagnostics.some((d) => /chat-wide axis model/i.test(d.text)), 'v2 migration should record a diagnostic.');
@@ -243,7 +250,7 @@ assert.strictEqual(SCHEMA_VERSION, 3, 'Chat-wide relationship schema should be v
   assert.strictEqual(migrated.npcs[0].residence, 'Room 308');
   assert.strictEqual(migrated.npcs[0].residenceSourceMessageId, 123);
   assert.strictEqual(migrated.config.updateMode, 'manual', 'Migration must not activate unfinished extraction.');
-  assert.strictEqual(migrated.config.contextInjectionEnabled, false);
+  assert.strictEqual(migrated.config.contextInjectionEnabled, true);
   assert.strictEqual(migrated.arcs.length, 1);
 }
 
