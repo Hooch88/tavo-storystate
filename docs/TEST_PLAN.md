@@ -35,6 +35,11 @@
 - NPC A → NPC B works;
 - reverse direction can differ;
 - Protagonist → NPC is never inferred;
+- relationship preset is stored once per chat, not per edge;
+- every edge uses the same active chat axes;
+- switching presets preserves `Trust` and `Affinity`;
+- a newly introduced third axis starts at `5/10`;
+- disabling the third axis removes it from every active edge;
 - no meaningful event = no score change;
 - normal change bounded to ±1;
 - unusually significant change bounded to ±2;
