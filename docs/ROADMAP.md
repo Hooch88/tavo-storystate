@@ -20,9 +20,10 @@
 - manual NPC editing; ✅
 - backup/export/import; ✅
 - relationship records separated from NPC objects; ✅
-- manual NPC → Protagonist and NPC → NPC relationship editing. ✅
+- manual NPC → Protagonist and NPC → NPC relationship editing; ✅
+- one chat-wide relationship axis model with automatic edge remapping. ✅
 
-Gate: local state-model tests pass; **device verification still required** that NPCs survive Tavo reload/restart and relationship edges remain intact after rename/merge.
+Gate: local state-model tests pass; device verification is still required after the chat-wide axis migration to confirm NPCs/relationships survive reload/restart and model changes apply across all edges.
 
 ## Phase 2 — Batched extraction
 
