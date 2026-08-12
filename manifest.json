@@ -2,7 +2,7 @@
   "specVersion": 2,
   "id": "com.hooch88.tavo-storystate",
   "name": { "$t": "plugin.name" },
-  "version": "0.1.0-dev.2",
+  "version": "0.1.0-dev.3",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
