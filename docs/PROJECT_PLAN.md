@@ -113,6 +113,19 @@ Hard default caps:
 
 Knowledge injection receives its own small cap when implemented.
 
+## Session continuity
+
+A Tavo chat is not assumed to run forever. StoryState must support clean campaign continuation when the current chat becomes too large.
+
+Phase 1C uses two layers:
+
+1. **Exact structured transfer** — frozen StoryState data is stored in a plugin-specific global handoff registry and copied into the fresh chat.
+2. **Compressed narrative transfer** — an optional continuation brief states the immediate time/location, active situation, relevant NPCs, unresolved developments, and exact continuation point.
+
+The old chat remains unchanged. The new chat is independent after import. Campaign identity persists, session number increments, and old chat message IDs are detached rather than falsely reused in the new chat.
+
+The continuation brief is deliberately temporary: it seeds the first four successful narrator replies, participates in normal NPC relevance selection, and then auto-expires. This avoids permanently spending context on the old session summary.
+
 ## Extraction
 
 One batched extraction call after a completed assistant message, never concurrent with the narrator request.

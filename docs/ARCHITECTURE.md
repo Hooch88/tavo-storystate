@@ -76,6 +76,22 @@ Signals include:
 - relationship adjacency to currently relevant NPCs;
 - active arc actor references later.
 
+## Session boundary
+
+StoryState state is normally chat-scoped. A deliberate handoff is the exception:
+
+```text
+Old chat StoryState
+      ↓ freeze snapshot
+plugin-specific global handoff registry
+      ↓ user chooses Continue here
+Fresh chat StoryState copy
+```
+
+The source session is never live-linked to the target. Imported state is independent.
+
+Message IDs are chat-local provenance and cannot cross the boundary safely. StoryState therefore clears old message-ID references at import while preserving the evidence text and semantic records. The continuation brief is injected temporarily and also participates in NPC relevance selection so a first message such as “Continue” can still recover the right active NPC state.
+
 ## Failure behavior
 
 Normal RP must work when StoryState is disabled, has corrupt state, or skips injection. Plugin failure must degrade to “no extra state,” not block generation.

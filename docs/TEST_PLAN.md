@@ -61,6 +61,21 @@
 - Attraction never implies consent/affection/obedience; Loyalty never implies obedience;
 - disabling narrator influence leaves the generation request untouched.
 
+## Session handoff tests
+
+- preparing a handoff does not mutate the source session;
+- campaign ID survives and session number increments in the fresh chat;
+- NPC IDs, aliases, characterization, residence text, relationships, axes, status/stance, settings, knowledge arrays, arc arrays, and manual overrides survive;
+- evidence text survives;
+- old chat message IDs are cleared at import rather than reused;
+- target chat receives a recovery snapshot before replacement;
+- a fresh chat with no NPC name in the first user message still receives the continuation brief;
+- NPC names inside the continuation brief seed normal relevance selection;
+- continuation brief decrements only after successful narrator generations;
+- continuation brief expires after four successful replies or can be stopped manually;
+- source and target states are independent after import;
+- global prepared-handoff registry remains bounded.
+
 ## Knowledge tests (Phase 4)
 
 - NPC can know a true secret;

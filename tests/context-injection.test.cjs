@@ -12,7 +12,17 @@ const tavo = {
     onSidebarAction() {},
   },
   get(name) { return name === 'storyState.state' ? currentState : null; },
-  set() {},
+  set(name, value) {
+    if (name === 'storyState.state') { currentState = value; return; }
+    if (!name.startsWith('storyState.state.') || !currentState) return;
+    const parts = name.slice('storyState.state.'.length).split('.');
+    let cursor = currentState;
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      if (!cursor[parts[i]] || typeof cursor[parts[i]] !== 'object') cursor[parts[i]] = {};
+      cursor = cursor[parts[i]];
+    }
+    cursor[parts.at(-1)] = value;
+  },
   utils: { toast() {} },
   message: {
     async count() { return recentMessages.length; },
@@ -27,10 +37,15 @@ const context = { console, tavo, Math, Date, JSON, Object, Array, Set, Map, Stri
 const source = fs.readFileSync(path.join(__dirname, '..', 'entry.js'), 'utf8');
 vm.runInNewContext(source, context, { filename: 'entry.js' });
 assert.strictEqual(typeof handlers['generation:prepare'], 'function', 'generation:prepare handler must be registered.');
+assert.strictEqual(typeof handlers['generation:success'], 'function', 'generation:success handler must be registered for handoff expiry.');
 
 function baseState() {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
+    campaign: {
+      id: 'campaign-test', name: 'Campus', sessionNumber: 1,
+      continuationBrief: '', continuationActive: false, continuationRemaining: 0
+    },
     config: { contextInjectionEnabled: true, relationshipPreset: 'dating', optionalThirdAxis: true },
     npcs: [
       {
@@ -99,7 +114,56 @@ function baseState() {
   await handlers['generation:prepare'](pinned);
   assert(pinned.text.includes('NPC: Reagan Mercer'), 'Pinned NPCs should remain relevant without a textual mention.');
 
-  console.log('StoryState Phase 1B context-injection tests passed.');
+
+  currentState = baseState();
+  currentState.campaign = {
+    id: 'campaign-test',
+    name: 'Campus',
+    sessionNumber: 2,
+    continuationBrief: 'Saturday 8:06 PM in the third-floor lounge. Reagan is sitting beside the protagonist after Priya and Tessa left. Continue from that exact moment.',
+    continuationActive: true,
+    continuationRemaining: 4
+  };
+  recentMessages = [];
+  const handoffStart = { text: 'Continue.' };
+  await handlers['generation:prepare'](handoffStart);
+  assert(handoffStart.text.includes('SESSION CONTINUATION — Campus, Session 2'), 'A fresh session must receive its continuation brief even when the newest user message names no NPC.');
+  assert(handoffStart.text.includes('authoritative handoff point from the prior session'), 'The narrator must understand the brief is the cross-session starting point.');
+  assert(handoffStart.text.includes('NPC: Reagan Mercer'), 'NPC names inside the continuation brief should seed normal StoryState relevance selection.');
+  assert(handoffStart.text.includes('RELATIONSHIP Reagan Mercer -> Protagonist'), 'Relevant relationship state should accompany a continuation brief.');
+  await handlers['generation:success']();
+  assert.strictEqual(currentState.campaign.continuationRemaining, 3, 'Only successful narrator generations should consume the continuation window.');
+  assert.strictEqual(currentState.campaign.continuationActive, true);
+
+  await handlers['generation:success']();
+  await handlers['generation:success']();
+  await handlers['generation:success']();
+  assert.strictEqual(currentState.campaign.continuationRemaining, 0);
+  assert.strictEqual(currentState.campaign.continuationActive, false, 'Continuation brief should auto-expire after the bounded handoff window.');
+
+  recentMessages = [];
+  const afterExpiry = { text: 'Continue.' };
+  await handlers['generation:prepare'](afterExpiry);
+  assert.strictEqual(afterExpiry.text, 'Continue.', 'Expired continuation brief must stop consuming context.');
+
+  currentState = baseState();
+  currentState.npcs = [];
+  currentState.relationships = [];
+  currentState.campaign = {
+    id: 'campaign-empty',
+    name: 'No NPC Test',
+    sessionNumber: 3,
+    continuationBrief: 'Midnight. The protagonist is alone in the observatory as the power fails.',
+    continuationActive: true,
+    continuationRemaining: 2
+  };
+  recentMessages = [];
+  const briefOnly = { text: 'Continue.' };
+  await handlers['generation:prepare'](briefOnly);
+  assert(briefOnly.text.startsWith('[[STORYSTATE_CONTEXT]]'), 'A continuation brief alone must be enough to create a context block.');
+  assert(briefOnly.text.includes('The protagonist is alone in the observatory'), 'Brief-only handoffs must reach the narrator.');
+
+  console.log('StoryState Phase 1C context-injection tests passed.');
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -39,6 +39,21 @@ Gate passed on-device for the Phase 1 manual state editor and chat-wide relation
 
 Gate: manual relationship changes materially alter the state supplied to the narrator while the visible saved chat remains unchanged.
 
+## Phase 1C — Campaign session handoff ✅
+
+- stable campaign ID and session number in chat state;
+- prepare a cross-chat handoff without cloning chat history;
+- bounded global registry (max 10 prepared handoffs);
+- source chat remains unchanged;
+- target chat receives an independent StoryState copy;
+- structured state carries forward: NPCs, relationships, settings, knowledge arrays, arcs, manual overrides, and evidence text;
+- old source-message IDs are detached because they are invalid in the fresh chat;
+- optional manual continuation brief seeds relevance and narration in the new session;
+- continuation brief auto-expires after four successful narrator replies and can be stopped manually;
+- target state is backed up before replacement.
+
+Gate: prepare in Session N, continue in a fresh chat as Session N+1, verify identical semantic state and no old-chat message IDs.
+
 ## Phase 2 — Batched extraction
 
 - one post-assistant extraction pass;

@@ -94,6 +94,9 @@ assert(html.includes('id="ss-context-injection"'), 'Chat settings must expose na
 assert(html.includes('name="relationshipStatus"'), 'Relationship editor must expose structural Relationship Status.');
 assert(!html.includes('name="condition"'), 'Legacy free-form Condition control must be removed.');
 assert(html.includes('.ss-form [hidden]'), 'Author CSS must honor hidden relationship controls.');
+assert(html.includes('id="ss-prepare-handoff"'), 'Settings must expose Prepare new session.');
+assert(html.includes('id="ss-handoff-list"'), 'Settings must expose prepared global handoffs.');
+assert(html.includes('name="continuationBrief"'), 'Session handoff must accept an immediate continuation brief.');
 vm.runInNewContext(matches.at(-1)[1], context, { filename: 'ui/panel.html' });
 
 const {
@@ -114,11 +117,18 @@ const {
   normalizeRelationshipStatus,
   migrateLegacyCondition,
   updateTargetVisibility,
+  normalizeCampaign,
+  normalizeHandoffRegistry,
+  createHandoffRecord,
+  buildContinuationState,
+  detachSessionMessageReferences,
+  stateHasMeaningfulData,
+  CONTINUATION_GENERATIONS,
 } = harness;
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
-assert.strictEqual(SCHEMA_VERSION, 5, 'Relationship-status cleanup schema should be v5.');
+assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
 
 {
   const form = dummyElement();
@@ -134,6 +144,10 @@ assert.strictEqual(SCHEMA_VERSION, 5, 'Relationship-status cleanup schema should
   const state = newState();
   assert.strictEqual(state.config.updateMode, 'manual');
   assert.strictEqual(state.config.contextInjectionEnabled, true);
+  assert(state.campaign.id.startsWith('campaign-'), 'A new chat should receive a stable campaign id.');
+  assert.strictEqual(state.campaign.name, 'Campaign');
+  assert.strictEqual(state.campaign.sessionNumber, 1);
+  assert.strictEqual(state.campaign.continuationActive, false);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(relationshipAxisNames('general', false))), ['Trust', 'Affinity']);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(relationshipAxisNames('dating', true))), ['Trust', 'Affinity', 'Attraction']);
 }
@@ -148,7 +162,7 @@ assert.strictEqual(SCHEMA_VERSION, 5, 'Relationship-status cleanup schema should
     arcs: []
   };
   const normalized = normalizeState(oldScaffold);
-  assert.strictEqual(normalized.schemaVersion, 5);
+  assert.strictEqual(normalized.schemaVersion, 6);
   assert.strictEqual(normalized.npcs[0].id, 'npc-a');
   assert.strictEqual(normalized.npcs[0].name, 'Reagan Mercer');
   assert.deepStrictEqual(JSON.parse(JSON.stringify(normalized.npcs[0].aliases)), []);
@@ -156,8 +170,8 @@ assert.strictEqual(SCHEMA_VERSION, 5, 'Relationship-status cleanup schema should
 }
 
 {
-  const disabledV5 = normalizeState({ schemaVersion: 5, config: { contextInjectionEnabled: false } });
-  assert.strictEqual(disabledV5.config.contextInjectionEnabled, false, 'A v5 user choice to disable narrator influence must persist.');
+  const disabledV6 = normalizeState({ schemaVersion: 6, config: { contextInjectionEnabled: false } });
+  assert.strictEqual(disabledV6.config.contextInjectionEnabled, false, 'A v6 user choice to disable narrator influence must persist.');
 }
 
 {
@@ -181,7 +195,7 @@ assert.strictEqual(SCHEMA_VERSION, 5, 'Relationship-status cleanup schema should
       axes: { Trust: 8, Attraction: 7, Investment: 4 }
     }]
   });
-  assert.strictEqual(v2.schemaVersion, 5);
+  assert.strictEqual(v2.schemaVersion, 6);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(v2.relationships[0].axes)), { Trust: 8, Affinity: 5, Attraction: 7 }, 'v2 migration should honor the chat model and preserve same-named values.');
   assert.strictEqual('axisPreset' in v2.relationships[0], false);
   assert(v2.diagnostics.some((d) => /chat-wide axis model/i.test(d.text)), 'v2 migration should record a diagnostic.');
@@ -332,6 +346,91 @@ assert.strictEqual(SCHEMA_VERSION, 5, 'Relationship-status cleanup schema should
     assert(entrySource.includes(definition), `Narrator injection must use canonical axis definition: ${definition}`);
   }
   assert(panelSource.includes('Scale: 0 = very low, 5 = neutral / uncertain, 10 = very high.'), 'UI must explain the relationship axis scale.');
+}
+
+
+{
+  const source = newState();
+  source.revision = 14;
+  source.campaign = normalizeCampaign({ id: 'campaign-omega', name: 'Whitmore', sessionNumber: 3, startedAt: '2026-08-01T00:00:00.000Z' });
+  source.npcs = [normalizeNpc({
+    id: 'npc-kendra', name: 'Kendra Marsh', residence: 'Room 308',
+    residenceSourceMessageId: 91, lastMeaningfulMessageId: 102
+  })];
+  source.relationships = [normalizeRelationship({
+    id: 'rel-kd', sourceNpcId: 'npc-kendra', targetType: 'protagonist',
+    axes: { Trust: 8, Affinity: 9 }, relationshipStatus: 'Dating',
+    evidence: [{ text: 'Kendra kissed Dakota in public.', sourceMessageId: 99 }],
+    lastMeaningfulChangeMessageId: 99
+  }, source.config)];
+  source.knowledgeItems = [{ id: 'info-1', statement: 'The dean resigned.', sourceMessageId: 88 }];
+  source.knowledgeStates = [{ npcId: 'npc-kendra', informationId: 'info-1', state: 'KNOWS', sourceMessageId: 89 }];
+  source.arcs = [{ id: 'arc-1', title: 'Floor rumor', sourceMessageId: 75, nested: { lastScannedMessageId: 74 } }];
+  source.meta.lastScannedMessageId = 103;
+
+  const untouched = clone(source);
+  const handoff = createHandoffRecord(
+    source,
+    'Whitmore',
+    3,
+    'Saturday 8:06 PM in the third-floor lounge. Kendra and Dakota are together after a public kiss; Priya and Tessa just left.'
+  );
+
+  assert.deepStrictEqual(clone(source), untouched, 'Preparing a handoff must never mutate the source session.');
+  assert.strictEqual(handoff.campaignId, 'campaign-omega');
+  assert.strictEqual(handoff.sessionNumber, 3);
+  assert.strictEqual(handoff.state.npcs[0].id, 'npc-kendra');
+  assert.strictEqual(handoff.state.relationships[0].axes.Trust, 8);
+  assert.strictEqual(handoff.state.knowledgeItems[0].statement, 'The dean resigned.');
+  assert.strictEqual(handoff.state.arcs[0].title, 'Floor rumor');
+
+  const continued = buildContinuationState(handoff, 2);
+  assert.strictEqual(continued.revision, 3, 'The new chat owns its own revision counter.');
+  assert.strictEqual(continued.campaign.id, 'campaign-omega', 'Campaign identity must survive the session boundary.');
+  assert.strictEqual(continued.campaign.name, 'Whitmore');
+  assert.strictEqual(continued.campaign.sessionNumber, 4, 'Continuing a handoff should advance to the next session number.');
+  assert.strictEqual(continued.campaign.sourceHandoffId, handoff.id);
+  assert.strictEqual(continued.campaign.continuationActive, true);
+  assert.strictEqual(continued.campaign.continuationRemaining, CONTINUATION_GENERATIONS);
+  assert(/third-floor lounge/.test(continued.campaign.continuationBrief));
+  assert.strictEqual(continued.npcs[0].residence, 'Room 308');
+  assert.strictEqual(continued.relationships[0].axes.Trust, 8);
+  assert.strictEqual(continued.relationships[0].evidence[0].text, 'Kendra kissed Dakota in public.');
+  assert.strictEqual(continued.npcs[0].residenceSourceMessageId, null, 'Old chat message ids must not masquerade as ids in the new chat.');
+  assert.strictEqual(continued.npcs[0].lastMeaningfulMessageId, null);
+  assert.strictEqual(continued.relationships[0].evidence[0].sourceMessageId, null);
+  assert.strictEqual(continued.relationships[0].lastMeaningfulChangeMessageId, null);
+  assert.strictEqual(continued.knowledgeItems[0].sourceMessageId, null, 'Future knowledge evidence ids must also detach at a session boundary.');
+  assert.strictEqual(continued.knowledgeStates[0].sourceMessageId, null);
+  assert.strictEqual(continued.arcs[0].sourceMessageId, null);
+  assert.strictEqual(continued.arcs[0].nested.lastScannedMessageId, null);
+  assert.strictEqual(continued.meta.lastScannedMessageId, null);
+  assert.strictEqual(continued.meta.scanStatus, 'idle');
+  assert.strictEqual(continued.config.updateMode, 'manual');
+  assert.strictEqual(stateHasMeaningfulData(continued), true);
+}
+
+{
+  const detached = detachSessionMessageReferences({
+    sourceMessageId: 1,
+    keep: 2,
+    nested: [{ lastMeaningfulChangeMessageId: 3, text: 'keep me' }]
+  });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(detached)), {
+    sourceMessageId: null,
+    keep: 2,
+    nested: [{ lastMeaningfulChangeMessageId: null, text: 'keep me' }]
+  });
+}
+
+{
+  const seed = newState();
+  const items = [];
+  for (let i = 0; i < 12; i += 1) {
+    items.push(createHandoffRecord(seed, `Campaign ${i}`, 1, `Brief ${i}`));
+  }
+  const registry = normalizeHandoffRegistry({ items });
+  assert.strictEqual(registry.items.length, 10, 'Global handoff registry should stay bounded.');
 }
 
 console.log('StoryState Phase 1 state-model tests passed.');

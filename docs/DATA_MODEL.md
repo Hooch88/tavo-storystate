@@ -39,6 +39,39 @@ Stable identity/characterization fields manually corrected by the user are recor
 
 Residence remains separately evidence-gated. A manually set residence has no fabricated source-message ID and should be treated as authoritative unless the user changes it.
 
+## Campaign/session metadata
+
+```json
+{
+  "id": "campaign-...",
+  "name": "Whitmore",
+  "sessionNumber": 4,
+  "startedAt": "2026-08-12T20:00:00.000Z",
+  "sourceHandoffId": "handoff-...",
+  "importedAt": "2026-08-13T01:00:00.000Z",
+  "continuationBrief": "Saturday 8:06 PM in the third-floor lounge...",
+  "continuationActive": true,
+  "continuationRemaining": 4
+}
+```
+
+The campaign ID stays stable across session handoffs. Each fresh chat gets its own independent StoryState copy and increments `sessionNumber`.
+
+A continuation brief is a short narrative bridge, not a second memory system. It is injected only during the first four successful narrator replies after import, then becomes inactive.
+
+## Session handoff
+
+Prepared handoffs live in a plugin-specific **global** registry so a fresh chat can see them. A handoff contains:
+
+- handoff ID/version;
+- campaign ID/name;
+- source session number;
+- creation time;
+- optional continuation brief;
+- a frozen StoryState snapshot.
+
+The snapshot carries semantic state forward. At import, chat-specific message references such as `sourceMessageId`, `residenceSourceMessageId`, `lastMeaningfulMessageId`, `lastMeaningfulChangeMessageId`, and `lastScannedMessageId` are cleared because those IDs belong to the old chat. Evidence text and all other semantic data remain.
+
 ## Chat relationship model
 
 Relationship axis ownership lives in chat-scoped config, not in each relationship record.

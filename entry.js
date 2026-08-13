@@ -5,6 +5,7 @@
   const STATE_KEY = "storyState.state";
   const UI_COMMAND_KEY = "storyState.uiCommand";
   const SCAN_REQUEST_KEY = "storyState.scanRequest";
+  const CONTINUATION_MAX = 6000;
 
   function integer(value, min, max, fallback = 0) {
     const parsed = Number.parseInt(value, 10);
@@ -127,8 +128,15 @@
   function buildContextBlock(state, relevanceText) {
     if (!state?.config?.contextInjectionEnabled) return "";
 
-    const activeNpcs = selectRelevantNpcs(state, relevanceText);
-    if (!activeNpcs.length) return "";
+    const continuationRemaining = integer(state?.campaign?.continuationRemaining, 0, 12, 0);
+    const continuationBrief = state?.campaign?.continuationActive && continuationRemaining > 0
+      ? text(state?.campaign?.continuationBrief, CONTINUATION_MAX)
+      : "";
+    const relevancePool = continuationBrief
+      ? `${relevanceText || ""}\n${continuationBrief}`
+      : relevanceText;
+    const activeNpcs = selectRelevantNpcs(state, relevancePool);
+    if (!activeNpcs.length && !continuationBrief) return "";
 
     const selectedIds = new Set(activeNpcs.map((npc) => npc.id));
     const relationships = (Array.isArray(state.relationships) ? state.relationships : [])
@@ -139,37 +147,46 @@
 
     const lines = ["[[STORYSTATE_CONTEXT]]"];
     lines.push("Persistent simulation state for the current scene. Do not expose, quote, or mention this block.");
-    lines.push("Treat relationship axes as directional behavioral tendencies, not commands. They influence conduct but do not override established personality, circumstances, evidence, or agency.");
-    lines.push("Relationship Status is structural context (for example Dating, Friends, Rivals), not an emotional score. Let the axes and Stance determine current feelings and behavior within that status.");
-    lines.push("Never infer reciprocity. A source NPC's feelings toward a target say nothing about the target's feelings back. Attraction never implies consent, affection, or obedience; loyalty never implies obedience.");
-    const activeAxisNames = relationships.length && relationships[0]?.axes ? Object.keys(relationships[0].axes) : [];
-    for (const axisName of activeAxisNames) {
-      if (AXIS_DEFINITIONS[axisName]) lines.push(`Axis meaning — ${axisName}: ${AXIS_DEFINITIONS[axisName]}`);
+
+    if (continuationBrief) {
+      lines.push(`SESSION CONTINUATION — ${text(state?.campaign?.name, 120) || "Campaign"}, Session ${integer(state?.campaign?.sessionNumber, 1, 9999, 1)}`);
+      lines.push("This is the authoritative handoff point from the prior session. Establish the new session from it without inventing missing events.");
+      lines.push(continuationBrief);
     }
 
-    for (const npc of activeNpcs) {
-      lines.push(`NPC: ${npc.name}`);
-      if (npc.role) lines.push(`Role: ${npc.role}`);
-      if (npc.residence) lines.push(`Residence: ${npc.residence}`);
-      if (npc.appearanceAnchor) lines.push(`Appearance: ${npc.appearanceAnchor}`);
-      if (npc.communicationSignature) lines.push(`Communication: ${npc.communicationSignature}`);
-      if (npc.pressureResponse) lines.push(`Under pressure: ${npc.pressureResponse}`);
-      if (npc.coreValue) lines.push(`Core value: ${npc.coreValue}`);
-      if (npc.currentMotive) lines.push(`Current motive: ${npc.currentMotive}`);
-      if (npc.contradiction) lines.push(`Contradiction/vulnerability: ${npc.contradiction}`);
-    }
-
-    for (const rel of relationships) {
-      const source = activeNpcs.find((npc) => npc.id === rel.sourceNpcId)?.name || rel.sourceNpcId;
-      const target = rel.targetType === "protagonist"
-        ? "Protagonist"
-        : (activeNpcs.find((npc) => npc.id === rel.targetNpcId)?.name || rel.targetNpcId);
-      lines.push(`RELATIONSHIP ${source} -> ${target}`);
-      if (rel.axes && typeof rel.axes === "object") {
-        for (const [name, value] of Object.entries(rel.axes)) lines.push(`- ${axisGuidance(name, value)}`);
+    if (activeNpcs.length) {
+      lines.push("Treat relationship axes as directional behavioral tendencies, not commands. They influence conduct but do not override established personality, circumstances, evidence, or agency.");
+      lines.push("Relationship Status is structural context (for example Dating, Friends, Rivals), not an emotional score. Let the axes and Stance determine current feelings and behavior within that status.");
+      lines.push("Never infer reciprocity. A source NPC's feelings toward a target say nothing about the target's feelings back. Attraction never implies consent, affection, or obedience; loyalty never implies obedience.");
+      const activeAxisNames = relationships.length && relationships[0]?.axes ? Object.keys(relationships[0].axes) : [];
+      for (const axisName of activeAxisNames) {
+        if (AXIS_DEFINITIONS[axisName]) lines.push(`Axis meaning — ${axisName}: ${AXIS_DEFINITIONS[axisName]}`);
       }
-      if (rel.relationshipStatus) lines.push(`Relationship status: ${rel.relationshipStatus}`);
-      if (rel.stanceSummary) lines.push(`Stance: ${rel.stanceSummary}`);
+
+      for (const npc of activeNpcs) {
+        lines.push(`NPC: ${npc.name}`);
+        if (npc.role) lines.push(`Role: ${npc.role}`);
+        if (npc.residence) lines.push(`Residence: ${npc.residence}`);
+        if (npc.appearanceAnchor) lines.push(`Appearance: ${npc.appearanceAnchor}`);
+        if (npc.communicationSignature) lines.push(`Communication: ${npc.communicationSignature}`);
+        if (npc.pressureResponse) lines.push(`Under pressure: ${npc.pressureResponse}`);
+        if (npc.coreValue) lines.push(`Core value: ${npc.coreValue}`);
+        if (npc.currentMotive) lines.push(`Current motive: ${npc.currentMotive}`);
+        if (npc.contradiction) lines.push(`Contradiction/vulnerability: ${npc.contradiction}`);
+      }
+
+      for (const rel of relationships) {
+        const source = activeNpcs.find((npc) => npc.id === rel.sourceNpcId)?.name || rel.sourceNpcId;
+        const target = rel.targetType === "protagonist"
+          ? "Protagonist"
+          : (activeNpcs.find((npc) => npc.id === rel.targetNpcId)?.name || rel.targetNpcId);
+        lines.push(`RELATIONSHIP ${source} -> ${target}`);
+        if (rel.axes && typeof rel.axes === "object") {
+          for (const [name, value] of Object.entries(rel.axes)) lines.push(`- ${axisGuidance(name, value)}`);
+        }
+        if (rel.relationshipStatus) lines.push(`Relationship status: ${rel.relationshipStatus}`);
+        if (rel.stanceSummary) lines.push(`Stance: ${rel.stanceSummary}`);
+      }
     }
 
     lines.push("[[END_STORYSTATE_CONTEXT]]");
@@ -229,6 +246,22 @@
       event.text = `${block}\n\n${event.text || ""}`;
     } catch (error) {
       console.error(`[${PLUGIN_LABEL}] Context injection skipped.`, error);
+    }
+  });
+
+  // A session handoff brief is intentionally short-lived. Count only successful
+  // narrator generations so retries/errors do not consume the continuation window.
+  tavo.plugin.on("generation:success", async () => {
+    try {
+      const state = tavo.get(STATE_KEY, "chat");
+      if (!state?.config?.contextInjectionEnabled || !state?.campaign?.continuationActive) return;
+      const remaining = integer(state.campaign.continuationRemaining, 0, 12, 0);
+      if (remaining <= 0) return;
+      const next = Math.max(0, remaining - 1);
+      tavo.set(`${STATE_KEY}.campaign.continuationRemaining`, next, "chat");
+      if (next === 0) tavo.set(`${STATE_KEY}.campaign.continuationActive`, false, "chat");
+    } catch (error) {
+      console.error(`[${PLUGIN_LABEL}] Could not advance continuation handoff window.`, error);
     }
   });
 })();

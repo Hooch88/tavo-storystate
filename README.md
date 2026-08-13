@@ -1,6 +1,6 @@
 # Tavo StoryState
 
-**Status:** Pre-alpha Phase 1B build (`0.1.0-dev.5`)
+**Status:** Pre-alpha Phase 1C build (`0.1.0-dev.6`)
 
 StoryState is a Tavo plugin project for persistent simulation state in long-running AI role-play. It is designed for narrator/simulation-master workflows where NPCs are created organically rather than represented by individual character cards.
 
@@ -38,6 +38,10 @@ Phase 1 now implements the persistent manual state foundation on top of the init
 - narrator influence is enabled by default per chat and can be disabled in StoryState Settings;
 - relationship values are translated into behavioral tendencies rather than injected as unexplained numbers;
 - recent visible messages are used locally for relevance so pronoun follow-ups can retain the right NPC state;
+- campaign/session handoff through a bounded global registry;
+- fresh-chat continuation imports an independent StoryState copy while leaving the old session untouched;
+- invalid old-chat message IDs are detached at the session boundary while evidence text and semantic state are preserved;
+- optional continuation brief seeds the new session for four successful narrator replies, then expires automatically;
 - no extraction yet (Phase 2).
 
 ## Repository lineage
@@ -66,7 +70,7 @@ The manifest must remain at the package root.
 
 ## Safety
 
-Use development builds only in a backup/disposable Tavo chat. State-changing extraction is not implemented in `0.1.0-dev.5`. Phase 1B should be device-tested in a backup/disposable chat before Phase 2 begins.
+Use development builds only in a backup/disposable Tavo chat. State-changing extraction is not implemented in `0.1.0-dev.6`. Phase 1C session handoff should be device-tested in backup/disposable chats before Phase 2 begins.
 
 ## Relationship semantics
 
@@ -82,3 +86,9 @@ Relationship axes drive behavioral tendencies. **Relationship Status** is struct
 - **Loyalty:** willingness to remain aligned with, defend, or prioritize the target when doing so has a cost; it does not imply obedience.
 
 The UI shows these same definitions that StoryState supplies to the narrator, so the visible meaning and model behavior stay aligned.
+
+## Session handoff
+
+Use **Settings → Campaign session handoff → Prepare new session…** near the end of a chat. StoryState saves a cross-chat handoff containing the exact structured state plus an optional continuation brief. Open a fresh Tavo chat with the same campaign/narrator setup, open StoryState, and choose **Continue here** on the prepared handoff.
+
+The old chat is not modified. The new chat receives its own independent StoryState copy and increments the campaign session number. Old message IDs are cleared because they do not identify messages in the fresh chat; evidence text, NPC state, relationship state, knowledge arrays, arc arrays, settings, and manual overrides remain.
