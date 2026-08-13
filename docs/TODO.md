@@ -18,6 +18,8 @@ This file collects non-critical defects and small UX corrections so they can be 
 
 - **Open StoryState directly to its main page from the Tavo sidebar action.** Keep the single-tap StoryState launcher behavior.
 - **Close Tavo's native sidebar automatically if/when Tavo exposes a supported plugin API for sidebar dismissal.** Do not use brittle DOM hacks against Tavo's internal UI.
+- **Add Copy All to Narrator Context Preview.** Put a copy icon/button in the preview header that copies the entire exact StoryState block supplied to the narrator, including content outside the currently visible preview area. Show a small success toast such as `Narrator context copied.` and a clear failure message if clipboard access fails.
+- **Consider Copy All for other long diagnostic/read-only panes during the planned UI redesign.** Keep this secondary to the Narrator Context Preview requirement rather than proliferating copy controls everywhere.
 
 ## Maintenance rule
 
