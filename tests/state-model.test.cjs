@@ -97,6 +97,9 @@ assert(html.includes('.ss-form [hidden]'), 'Author CSS must honor hidden relatio
 assert(html.includes('id="ss-prepare-handoff"'), 'Settings must expose Prepare new session.');
 assert(html.includes('id="ss-handoff-list"'), 'Settings must expose prepared global handoffs.');
 assert(html.includes('name="continuationBrief"'), 'Session handoff must accept an immediate continuation brief.');
+assert(html.includes('lastCommandNonce=String(initialCommand?.nonce||"")'), 'Startup must prime the last UI-command nonce so stale open commands are not replayed.');
+assert(html.includes('com.hooch88.tavo.campaignIdentity'), 'StoryState must publish a stable cross-plugin campaign identity key.');
+assert(html.includes('tavo.set(UI_COMMAND_KEY,null,"chat")'), 'Consumed StoryState UI open commands should be cleared.');
 vm.runInNewContext(matches.at(-1)[1], context, { filename: 'ui/panel.html' });
 
 const {
@@ -431,6 +434,17 @@ assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
   }
   const registry = normalizeHandoffRegistry({ items });
   assert.strictEqual(registry.items.length, 10, 'Global handoff registry should stay bounded.');
+}
+
+
+{
+  const state = newState();
+  state.campaign = normalizeCampaign({ id: 'campaign-bridge', name: 'Bridge Test', sessionNumber: 3 });
+  harness.publishCampaignIdentity(state);
+  const identity = variableStore.get('com.hooch88.tavo.campaignIdentity');
+  assert.strictEqual(identity.id, 'campaign-bridge');
+  assert.strictEqual(identity.name, 'Bridge Test');
+  assert.strictEqual(identity.sessionNumber, 3);
 }
 
 console.log('StoryState Phase 1 state-model tests passed.');

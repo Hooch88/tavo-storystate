@@ -51,3 +51,19 @@ No additional permission is required beyond StoryState's existing `variable` per
 
 - https://docs.tavoai.dev/en/guides/plugin-development/
 - https://docs.tavoai.dev/en/guides/javascript-api/
+
+
+## Shared campaign identity contract
+
+StoryState publishes a compact chat-scoped campaign identity at `com.hooch88.tavo.campaignIdentity`:
+
+```json
+{
+  "id": "campaign-...",
+  "name": "Campaign name",
+  "sessionNumber": 2,
+  "source": "storyState"
+}
+```
+
+Other Hooch88/Tavo plugins may read this key to share one campaign namespace without depending on StoryState's full internal schema. StoryState remains the owner of campaign identity.

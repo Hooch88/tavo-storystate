@@ -92,3 +92,10 @@ The UI shows these same definitions that StoryState supplies to the narrator, so
 Use **Settings → Campaign session handoff → Prepare new session…** near the end of a chat. StoryState saves a cross-chat handoff containing the exact structured state plus an optional continuation brief. Open a fresh Tavo chat with the same campaign/narrator setup, open StoryState, and choose **Continue here** on the prepared handoff.
 
 The old chat is not modified. The new chat receives its own independent StoryState copy and increments the campaign session number. Old message IDs are cleared because they do not identify messages in the fresh chat; evidence text, NPC state, relationship state, knowledge arrays, arc arrays, settings, and manual overrides remain.
+
+
+### dev.7 startup hotfix
+
+- StoryState no longer replays a persisted sidebar-open command when Tavo starts. The app can return to its normal last-chat view until StoryState is explicitly opened.
+
+- StoryState publishes `com.hooch88.tavo.campaignIdentity` as the stable cross-plugin campaign identity bridge for companion plugins such as Visual Library.
