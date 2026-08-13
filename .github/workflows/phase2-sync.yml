@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   sync:
-    if: contains(github.event.head_commit.message, 'run StoryState Phase 2 sync')
+    if: contains(github.event.head_commit.message, 'rerun StoryState Phase 2 sync with safe transport')
     runs-on: ubuntu-24.04
     steps:
       - name: Check out main
@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .transport/ss-p2-final.part* > /tmp/ss-p2.b64
+          cat .transport/p2c.part* > /tmp/ss-p2.b64
           echo "cc086ed5388e5cd096244c56dce996deb40af4bb4f9b82056cafaefe66afaae0  /tmp/ss-p2.b64" | sha256sum -c -
           base64 -d /tmp/ss-p2.b64 > /tmp/ss-p2.diff.gz
           gzip -dc /tmp/ss-p2.diff.gz > /tmp/ss-p2.diff
