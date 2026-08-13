@@ -1,0 +1,54 @@
+name: Sync StoryState dev7
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: contains(github.event.head_commit.message, 'run StoryState dev7 sync')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply verified dev7 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .transport/ss7.part* > /tmp/ss7.b64
+          echo "c32ec2d1c9568678d0985b1d5cf2385e399cc323ca6b8699ea77243d083184f7  /tmp/ss7.b64" | sha256sum -c -
+          base64 -d /tmp/ss7.b64 > /tmp/ss7.diff.gz
+          gzip -dc /tmp/ss7.diff.gz > /tmp/ss7.diff
+          patch -p1 < /tmp/ss7.diff
+      - name: Run StoryState checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test
+          npm run check
+      - name: Verify exact dev7 source blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_blob() { test "$(git hash-object "$1")" = "$2" || { echo "Blob mismatch: $1"; exit 1; }; }
+          check_blob README.md 95b458a05278f397079af139c5ce9ae2c89bc8c3
+          check_blob docs/TAVO_API_NOTES.md 9d7e51ebb18db3bffd51781c5dab8e62f290e5d0
+          check_blob manifest.json dafcbad124f52b068808c281ec10299bda691e6c
+          check_blob package.json d7646c8e76c9ee981a0bfb6fa3a853c135115106
+          check_blob tests/state-model.test.cjs fa0e271def2c1efb7185b3c94ffd5eb47707f782
+          check_blob ui/panel.html 86e599556c991364859e7939ba462267a30b97d6
+      - name: Commit clean dev7 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .transport .github/workflows/ss7-sync.yml
+          git config user.name "Hooch88"
+          git config user.email "155849308+Hooch88@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: preserve Tavo startup view and publish campaign identity"
+          git push origin main
