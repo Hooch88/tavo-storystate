@@ -26,6 +26,7 @@ This file describes the intended model, not necessarily every field present in t
   "mergedIntoNpcId": null,
   "manualOverrides": ["name", "residence", "communicationSignature"],
   "createdBy": "manual",
+  "updatedBy": "manual",
   "createdAt": "2026-08-12T20:00:00.000Z",
   "updatedAt": "2026-08-12T20:00:00.000Z"
 }
@@ -112,6 +113,8 @@ With the optional third axis disabled, every preset uses only `Trust` and `Affin
     }
   ],
   "lastMeaningfulChangeMessageId": 207,
+  "manualAuthorityThroughMessageId": 215,
+  "updatedBy": "manual",
   "status": "active"
 }
 ```
@@ -119,6 +122,15 @@ With the optional third axis disabled, every preset uses only `Trust` and `Affin
 For NPC → NPC, set `targetType` to `npc` and provide `targetNpcId`.
 
 No automatic Protagonist → NPC records.
+
+
+### Phase 2 extraction provenance
+
+`createdBy` / `updatedBy` distinguish manual, migration, and extraction writes. Stable NPC fields listed in `manualOverrides` are never casually rewritten by extraction. Phase 2 currently autofills empty stable fields conservatively; `currentMotive` is the intentionally dynamic exception.
+
+A manually edited relationship records `manualAuthorityThroughMessageId`, the newest visible story message when the user saved the edit. Automatic relationship proposals whose newest evidence is not newer than that marker are rejected. Newer explicit story events may move the relationship again, with each numeric axis hard-bounded to at most ±2 per scan.
+
+Phase 2 scan metadata additionally keeps `lastScannedFloor`, `lastScannedMessageId`, `lastScanAt`, `scanStatus`, and `lastScanSummary`. Session handoff clears both message IDs and floor/authority markers because they belong to the source chat.
 
 ## Knowledge item (Phase 4)
 

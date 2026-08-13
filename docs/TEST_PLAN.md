@@ -76,6 +76,25 @@
 - source and target states are independent after import;
 - global prepared-handoff registry remains bounded.
 
+
+## Phase 2 extraction tests
+
+- Assisted mode is the v7 default; Manual mode persists when explicitly chosen in v7.
+- `/Scan Now/` can queue one scan independently of Assisted cadence.
+- extractor JSON parser accepts one fenced JSON object but rejects non-JSON output.
+- every proposed evidence ID must exist in the supplied scan batch.
+- recurring NPC admission requires at least two distinct evidence messages.
+- Tavo, narrator/simulation master, protagonist, and generic extras are rejected as NPC creates.
+- stable manual NPC fields are not overwritten; dynamic current motive may update.
+- standing in Room 308 does not establish residence; explicit “lives in Room 308” can.
+- older evidence cannot overwrite a relationship manually corrected later.
+- newer evidence can move that relationship again.
+- any existing-axis movement is capped to ±2 even if the extractor proposes an extreme target.
+- NPC → NPC creation never implies the reverse edge.
+- a neutral/no-op relationship proposal is not created.
+- Visual Library `TVL_VISUAL_REFERENCE` utility bubbles do not count toward scan cadence.
+- successful commit is re-read and verified exactly; failed extraction leaves prior semantic state available.
+
 ## Knowledge tests (Phase 4)
 
 - NPC can know a true secret;

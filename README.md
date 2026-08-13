@@ -1,6 +1,6 @@
 # Tavo StoryState
 
-**Status:** Pre-alpha Phase 1C build (`0.1.0-dev.6`)
+**Status:** Pre-alpha Phase 2 build (`0.2.0-dev.1`)
 
 StoryState is a Tavo plugin project for persistent simulation state in long-running AI role-play. It is designed for narrator/simulation-master workflows where NPCs are created organically rather than represented by individual character cards.
 
@@ -42,7 +42,17 @@ Phase 1 now implements the persistent manual state foundation on top of the init
 - fresh-chat continuation imports an independent StoryState copy while leaving the old session untouched;
 - invalid old-chat message IDs are detached at the session boundary while evidence text and semantic state are preserved;
 - optional continuation brief seeds the new session for four successful narrator replies, then expires automatically;
-- no extraction yet (Phase 2).
+- Phase 2 batched extraction of meaningful NPC and directional relationship changes;
+- Assisted mode scans automatically after a configurable number of saved story messages; Manual mode uses **Scan Now** only;
+- one independent `tavo.generate(...)` extraction call per scan with `context: false` and an explicit bounded message/state packet;
+- extraction evidence IDs are validated against the supplied saved messages before any state mutation;
+- recurring-NPC admission requires evidence from at least two supplied messages, while major/relationship/arc significance can justify earlier admission;
+- residence extraction requires explicit living/residence evidence; presence alone is rejected;
+- existing relationship score changes are hard-bounded to ±2 per scan and most scenes are instructed to produce no change;
+- manual relationship edits become authoritative through the current message ID, so older extracted evidence cannot overwrite a user correction;
+- stable manually corrected NPC fields remain locked while dynamic `currentMotive` can continue to evolve from newer evidence;
+- extraction commits use a recovery snapshot, one whole-state write, and exact re-read verification;
+- Visual Library utility image bubbles are excluded from scan cadence and evidence.
 
 ## Repository lineage
 
@@ -70,7 +80,7 @@ The manifest must remain at the package root.
 
 ## Safety
 
-Use development builds only in a backup/disposable Tavo chat. State-changing extraction is not implemented in `0.1.0-dev.6`. Phase 1C session handoff should be device-tested in backup/disposable chats before Phase 2 begins.
+Use development builds only in a backup/disposable Tavo chat. Phase 2 now changes persistent state automatically in Assisted mode, so review the Diagnostics and Last Scan summary during early device testing. Export StoryState before testing on a valued campaign.
 
 ## Relationship semantics
 

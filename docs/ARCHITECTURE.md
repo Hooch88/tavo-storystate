@@ -30,7 +30,7 @@ validate evidence + schema
 atomic state commit + verification
 ```
 
-The extraction request happens only after the assistant message is saved. The next normal RP request consumes locally assembled state through `generation:prepare`.
+The extraction request happens only after the assistant message is saved. In Assisted mode the entry script queues a scan only when cadence is reached; in Manual mode the user explicitly presses **Scan Now**. The HTML fragment then sends one independent `tavo.generate(...)` request with `context: false`, so the extractor sees only the bounded message/state packet StoryState supplies rather than inheriting the full RP context. The next normal RP request consumes the verified stored result through `generation:prepare`.
 
 ## State ownership
 
@@ -60,7 +60,9 @@ Separate module. Do not entwine arc state with relationship records.
 
 The extractor proposes. StoryState validates. The database owns the current state.
 
-Residence, relationship changes, and knowledge-state changes require real saved-message source IDs.
+Residence and relationship changes require real saved-message IDs from the exact batch supplied to the extractor. Proposed IDs that are not in that batch are discarded. Residence also requires explicit living/residence wording; being physically present in a room is insufficient.
+
+Existing relationship numeric changes are clamped to ±2 per scan. Manual relationship edits create an authority-through message marker; extractor evidence at or before that marker cannot overwrite the user's correction.
 
 ## Relevance
 
@@ -95,3 +97,5 @@ Message IDs are chat-local provenance and cannot cross the boundary safely. Stor
 ## Failure behavior
 
 Normal RP must work when StoryState is disabled, has corrupt state, or skips injection. Plugin failure must degrade to “no extra state,” not block generation.
+
+A failed Phase 2 extraction sets scan status to `error` and leaves the previously committed semantic state intact. A successful state-changing extraction saves a recovery snapshot, performs one whole-state write, then re-reads and compares the normalized state exactly; verification failure restores the previous state.

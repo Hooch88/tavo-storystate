@@ -211,6 +211,10 @@
     try {
       const message = event?.message;
       if (!message || message.hidden || !["user", "assistant"].includes(message.role)) return;
+      const content = String(message.content || "");
+      // Companion plugins may append assistant-side utility bubbles. They are not
+      // story posts and must not advance the extraction cadence or become evidence.
+      if (content.includes("<!-- TVL_VISUAL_REFERENCE -->")) return;
 
       const state = tavo.get(STATE_KEY, "chat");
       if (!state || typeof state !== "object" || Array.isArray(state)) return;

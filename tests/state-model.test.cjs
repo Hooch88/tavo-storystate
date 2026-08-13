@@ -131,7 +131,7 @@ const {
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
-assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
+assert.strictEqual(SCHEMA_VERSION, 7, 'Phase 2 extraction schema should be v7.');
 
 {
   const form = dummyElement();
@@ -145,7 +145,7 @@ assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
 
 {
   const state = newState();
-  assert.strictEqual(state.config.updateMode, 'manual');
+  assert.strictEqual(state.config.updateMode, 'assisted');
   assert.strictEqual(state.config.contextInjectionEnabled, true);
   assert(state.campaign.id.startsWith('campaign-'), 'A new chat should receive a stable campaign id.');
   assert.strictEqual(state.campaign.name, 'Campaign');
@@ -165,7 +165,7 @@ assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
     arcs: []
   };
   const normalized = normalizeState(oldScaffold);
-  assert.strictEqual(normalized.schemaVersion, 6);
+  assert.strictEqual(normalized.schemaVersion, 7);
   assert.strictEqual(normalized.npcs[0].id, 'npc-a');
   assert.strictEqual(normalized.npcs[0].name, 'Reagan Mercer');
   assert.deepStrictEqual(JSON.parse(JSON.stringify(normalized.npcs[0].aliases)), []);
@@ -173,8 +173,11 @@ assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
 }
 
 {
-  const disabledV6 = normalizeState({ schemaVersion: 6, config: { contextInjectionEnabled: false } });
-  assert.strictEqual(disabledV6.config.contextInjectionEnabled, false, 'A v6 user choice to disable narrator influence must persist.');
+  const upgradedV6 = normalizeState({ schemaVersion: 6, config: { contextInjectionEnabled: false, updateMode: 'manual' } });
+  assert.strictEqual(upgradedV6.config.contextInjectionEnabled, false, 'A v6 user choice to disable narrator influence must persist.');
+  assert.strictEqual(upgradedV6.config.updateMode, 'assisted', 'Pre-v7 chats should enable Phase 2 assisted extraction on upgrade.');
+  const manualV7 = normalizeState({ schemaVersion: 7, config: { updateMode: 'manual' } });
+  assert.strictEqual(manualV7.config.updateMode, 'manual', 'A v7 user choice to use Manual scanning must persist.');
 }
 
 {
@@ -198,7 +201,7 @@ assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
       axes: { Trust: 8, Attraction: 7, Investment: 4 }
     }]
   });
-  assert.strictEqual(v2.schemaVersion, 6);
+  assert.strictEqual(v2.schemaVersion, 7);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(v2.relationships[0].axes)), { Trust: 8, Affinity: 5, Attraction: 7 }, 'v2 migration should honor the chat model and preserve same-named values.');
   assert.strictEqual('axisPreset' in v2.relationships[0], false);
   assert(v2.diagnostics.some((d) => /chat-wide axis model/i.test(d.text)), 'v2 migration should record a diagnostic.');
@@ -408,8 +411,9 @@ assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
   assert.strictEqual(continued.arcs[0].sourceMessageId, null);
   assert.strictEqual(continued.arcs[0].nested.lastScannedMessageId, null);
   assert.strictEqual(continued.meta.lastScannedMessageId, null);
+  assert.strictEqual(continued.meta.lastScannedFloor, null);
   assert.strictEqual(continued.meta.scanStatus, 'idle');
-  assert.strictEqual(continued.config.updateMode, 'manual');
+  assert.strictEqual(continued.config.updateMode, 'assisted');
   assert.strictEqual(stateHasMeaningfulData(continued), true);
 }
 
@@ -417,12 +421,12 @@ assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
   const detached = detachSessionMessageReferences({
     sourceMessageId: 1,
     keep: 2,
-    nested: [{ lastMeaningfulChangeMessageId: 3, text: 'keep me' }]
+    nested: [{ lastMeaningfulChangeMessageId: 3, manualAuthorityThroughMessageId: 4, lastScannedFloor: 9, text: 'keep me' }]
   });
   assert.deepStrictEqual(JSON.parse(JSON.stringify(detached)), {
     sourceMessageId: null,
     keep: 2,
-    nested: [{ lastMeaningfulChangeMessageId: null, text: 'keep me' }]
+    nested: [{ lastMeaningfulChangeMessageId: null, manualAuthorityThroughMessageId: null, lastScannedFloor: null, text: 'keep me' }]
   });
 }
 
@@ -447,4 +451,4 @@ assert.strictEqual(SCHEMA_VERSION, 6, 'Campaign handoff schema should be v6.');
   assert.strictEqual(identity.sessionNumber, 3);
 }
 
-console.log('StoryState Phase 1 state-model tests passed.');
+console.log('StoryState Phase 2 state-model tests passed.');

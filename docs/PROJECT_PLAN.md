@@ -103,7 +103,7 @@ Preserve the useful finite-arc concepts from Living World, but isolate them whil
 
 StoryState must supply compact relevant state to normal narrator requests without adding fake visible chat messages and without making another model call.
 
-Primary mechanism: Tavo installed-plugin `generation:prepare` hook. Phase 1B activates this path for manually stored state before Phase 2 automatic extraction is introduced. Relevance is selected locally from the current request, a small recent-message window, aliases, and pinned NPCs.
+Primary mechanism: Tavo installed-plugin `generation:prepare` hook. Phase 1B established this path for manual state; Phase 2 feeds conservatively extracted state through the same proven narrator-feedback path. Relevance is selected locally from the current request, a small recent-message window, aliases, and pinned NPCs.
 
 Hard default caps:
 
@@ -128,7 +128,7 @@ The continuation brief is deliberately temporary: it seeds the first four succes
 
 ## Extraction
 
-One batched extraction call after a completed assistant message, never concurrent with the narrator request.
+One batched extraction call is queued only after saved narration. Assisted mode runs when cadence is reached; Manual mode runs only from **Scan Now**. The extractor receives a bounded explicit packet with `context: false` rather than the full RP context.
 
 One scan may propose:
 
@@ -138,7 +138,7 @@ One scan may propose:
 - knowledge changes (Phase 4);
 - arc additions/changes after arc reintegration.
 
-Unchanged records are omitted.
+Unchanged records are omitted. Phase 2 validates all evidence IDs, rejects generic/reserved NPCs, treats residence as explicit-evidence-only, clamps existing relationship score movement to ±2, and preserves manual corrections against older evidence. Successful changes use a recovery snapshot plus whole-state re-read verification.
 
 ## Non-goals
 

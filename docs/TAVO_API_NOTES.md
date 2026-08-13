@@ -45,7 +45,11 @@ No additional permission is required beyond StoryState's existing `variable` per
 
 ## Independent extraction generation
 
-`tavo.generate(prompt, options)` is a one-off generation call. StoryState should invoke it only after the assistant reply is saved, not during the narrator request.
+`tavo.generate(prompt, options)` is a one-off generation call returning a full string and uses the model API bound to the current chat. Phase 2 invokes it only after saved narration has queued a scan. The extractor uses `context: false` and sends its own bounded state/message packet, with conservative generation settings, so it does not reuse the full RP conversation context.
+
+Independent TavoJS `tavo.generate(...)` calls do not trigger the installed-plugin `generation:prepare` / `generation:success` lifecycle hooks. This keeps extraction from consuming the Phase 1C continuation counter or receiving StoryState's normal narrator-context injection.
+
+`message.find(...)` returns stable message IDs on each message object; Phase 2 validates every model-proposed evidence ID against the exact retrieved batch before applying a change.
 
 ## References
 

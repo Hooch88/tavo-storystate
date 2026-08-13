@@ -54,18 +54,25 @@ Gate: manual relationship changes materially alter the state supplied to the nar
 
 Gate: prepare in Session N, continue in a fresh chat as Session N+1, verify identical semantic state and no old-chat message IDs.
 
-## Phase 2 — Batched extraction
+## Phase 2 — Batched extraction 🚧
 
-- one post-assistant extraction pass;
-- relevant-state filtering before prompt assembly;
-- propose NPC additions/updates;
-- propose relationship additions/changes;
-- validate evidence IDs;
-- bounded changes;
-- atomic commit + re-read verification;
-- manual vs assisted modes.
+Implemented in `0.2.0-dev.1`:
 
-Gate: no concurrent narrator/extractor request collisions; unchanged scenes do not churn state.
+- one post-assistant batch extraction request when cadence is reached; ✅
+- Manual (`Scan Now`) and Assisted automatic modes; ✅
+- relevant-state filtering plus a compact known-NPC directory before prompt assembly; ✅
+- conservative NPC create/update proposals with explicit admission reasons; ✅
+- directional NPC → Protagonist and NPC → NPC relationship proposals; ✅
+- saved-message evidence-ID validation before mutation; ✅
+- explicit residence safeguard: presence alone does not establish residence; ✅
+- relationship score changes hard-bounded to ±2 per scan; ✅
+- manual relationship authority marker prevents older evidence from overwriting a correction; ✅
+- stable manually locked NPC fields are preserved while `currentMotive` remains dynamic; ✅
+- one recovery snapshot + whole-state commit + exact re-read verification; ✅
+- Visual Library utility bubbles excluded from cadence/evidence; ✅
+- compact last-scan summary and diagnostics. ✅
+
+Device gate still required: verify real-model JSON reliability, unchanged-scene non-churn, and that automatic extraction does not interfere with normal narrator generation on the user's configured API/model.
 
 ## Phase 3 — Context feedback hardening
 
