@@ -30,7 +30,7 @@ assert.strictEqual(typeof handlers['generation:prepare'], 'function', 'generatio
 
 function baseState() {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     config: { contextInjectionEnabled: true, relationshipPreset: 'dating', optionalThirdAxis: true },
     npcs: [
       {
@@ -44,11 +44,11 @@ function baseState() {
     relationships: [
       {
         id: 'rel-rp', sourceNpcId: 'npc-reagan', targetType: 'protagonist', targetNpcId: null, status: 'active',
-        axes: { Trust: 3, Affinity: 8, Attraction: 7 }, condition: 'cautious / repairing', stanceSummary: 'Interested but unwilling to give automatic benefit of the doubt'
+        axes: { Trust: 3, Affinity: 8, Attraction: 7 }, relationshipStatus: 'Dating', stanceSummary: 'Interested but unwilling to give automatic benefit of the doubt'
       },
       {
         id: 'rel-sr', sourceNpcId: 'npc-sadie', targetType: 'npc', targetNpcId: 'npc-reagan', status: 'active',
-        axes: { Trust: 6, Affinity: 9, Attraction: 5 }, condition: '', stanceSummary: ''
+        axes: { Trust: 6, Affinity: 9, Attraction: 5 }, relationshipStatus: 'Friends', stanceSummary: ''
       }
     ]
   };
@@ -67,6 +67,11 @@ function baseState() {
   assert(event.text.includes('Trust 3/10 — is guarded; checks claims and limits reliance or vulnerability'), 'Low trust must produce behavioral guidance.');
   assert(event.text.includes('Affinity 8/10 — strongly likes the target'), 'High affinity must produce behavioral guidance.');
   assert(event.text.includes('Attraction 7/10 — feels strong romantic or physical attraction'), 'High attraction must produce behavioral guidance.');
+  assert(event.text.includes('Axis meaning — Trust: Willingness to believe, rely on, and be vulnerable with the target.'), 'Injected Trust definition must match StoryState semantics.');
+  assert(event.text.includes('Axis meaning — Affinity: How much the NPC likes the target and enjoys their company; warmth and goodwill, not romance by itself.'), 'Injected Affinity definition must match StoryState semantics.');
+  assert(event.text.includes('Axis meaning — Attraction: Romantic or physical pull toward the target; it does not imply affection, trust, consent, or obedience.'), 'Injected Attraction definition must match StoryState semantics.');
+  assert(event.text.includes('Relationship status: Dating'), 'Structural relationship status should be supplied separately from emotional axes.');
+  assert(event.text.includes('Relationship Status is structural context'), 'The model must be told status is structural rather than an emotional override.');
   assert(event.text.includes('Never infer reciprocity'), 'Context must explicitly protect directional meaning.');
   assert(event.text.includes('Attraction never implies consent, affection, or obedience'), 'Attraction guidance must not imply consent or compliance.');
   assert(!event.text.includes('RELATIONSHIP Sadie Brooks -> Reagan Mercer'), 'Unrelated source NPC relationships should stay out when Sadie is not relevant.');

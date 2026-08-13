@@ -91,6 +91,9 @@ assert(!html.includes('name="thirdAxisEnabled"'), 'Relationship editor must not 
 assert(html.includes('id="ss-chat-preset"'), 'Chat settings must own the relationship preset.');
 assert(html.includes('id="ss-chat-third-axis"'), 'Chat settings must own third-axis mode.');
 assert(html.includes('id="ss-context-injection"'), 'Chat settings must expose narrator influence.');
+assert(html.includes('name="relationshipStatus"'), 'Relationship editor must expose structural Relationship Status.');
+assert(!html.includes('name="condition"'), 'Legacy free-form Condition control must be removed.');
+assert(html.includes('.ss-form [hidden]'), 'Author CSS must honor hidden relationship controls.');
 vm.runInNewContext(matches.at(-1)[1], context, { filename: 'ui/panel.html' });
 
 const {
@@ -108,11 +111,24 @@ const {
   migrateLivingWorldState,
   markManualChanges,
   relationshipEdgeKey,
+  normalizeRelationshipStatus,
+  migrateLegacyCondition,
+  updateTargetVisibility,
 } = harness;
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
-assert.strictEqual(SCHEMA_VERSION, 4, 'Narrator-influence schema should be v4.');
+assert.strictEqual(SCHEMA_VERSION, 5, 'Relationship-status cleanup schema should be v5.');
+
+{
+  const form = dummyElement();
+  form.elements.targetType.value = 'protagonist';
+  form.elements.targetNpcId.value = 'npc-b';
+  updateTargetVisibility(form);
+  assert.strictEqual(getElement('[data-npc-target]').hidden, true, 'Target NPC field must hide for Protagonist target.');
+  assert.strictEqual(form.elements.targetNpcId.disabled, true, 'Target NPC selector must be disabled for Protagonist target.');
+  assert.strictEqual(form.elements.targetNpcId.value, '', 'Switching to Protagonist must clear stale NPC target selection.');
+}
 
 {
   const state = newState();
@@ -132,7 +148,7 @@ assert.strictEqual(SCHEMA_VERSION, 4, 'Narrator-influence schema should be v4.')
     arcs: []
   };
   const normalized = normalizeState(oldScaffold);
-  assert.strictEqual(normalized.schemaVersion, 4);
+  assert.strictEqual(normalized.schemaVersion, 5);
   assert.strictEqual(normalized.npcs[0].id, 'npc-a');
   assert.strictEqual(normalized.npcs[0].name, 'Reagan Mercer');
   assert.deepStrictEqual(JSON.parse(JSON.stringify(normalized.npcs[0].aliases)), []);
@@ -140,8 +156,8 @@ assert.strictEqual(SCHEMA_VERSION, 4, 'Narrator-influence schema should be v4.')
 }
 
 {
-  const disabledV4 = normalizeState({ schemaVersion: 4, config: { contextInjectionEnabled: false } });
-  assert.strictEqual(disabledV4.config.contextInjectionEnabled, false, 'A v4 user choice to disable narrator influence must persist.');
+  const disabledV5 = normalizeState({ schemaVersion: 5, config: { contextInjectionEnabled: false } });
+  assert.strictEqual(disabledV5.config.contextInjectionEnabled, false, 'A v5 user choice to disable narrator influence must persist.');
 }
 
 {
@@ -165,10 +181,28 @@ assert.strictEqual(SCHEMA_VERSION, 4, 'Narrator-influence schema should be v4.')
       axes: { Trust: 8, Attraction: 7, Investment: 4 }
     }]
   });
-  assert.strictEqual(v2.schemaVersion, 4);
+  assert.strictEqual(v2.schemaVersion, 5);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(v2.relationships[0].axes)), { Trust: 8, Affinity: 5, Attraction: 7 }, 'v2 migration should honor the chat model and preserve same-named values.');
   assert.strictEqual('axisPreset' in v2.relationships[0], false);
   assert(v2.diagnostics.some((d) => /chat-wide axis model/i.test(d.text)), 'v2 migration should record a diagnostic.');
+}
+
+{
+  const structural = normalizeRelationship({
+    id: 'rel-status', sourceNpcId: 'npc-a', targetType: 'protagonist',
+    axes: { Trust: 5, Affinity: 5 }, condition: 'dating', stanceSummary: ''
+  }, { relationshipPreset: 'general', optionalThirdAxis: false });
+  assert.strictEqual(structural.relationshipStatus, 'Dating', 'Recognized legacy structural conditions should migrate to Relationship Status.');
+  assert.strictEqual(structural.stanceSummary, '');
+  assert.strictEqual('condition' in structural, false, 'Condition must not survive in the v5 record.');
+
+  const emotional = normalizeRelationship({
+    id: 'rel-love', sourceNpcId: 'npc-a', targetType: 'protagonist',
+    axes: { Trust: 1, Affinity: 1 }, condition: 'love', stanceSummary: 'Guarded after an argument'
+  }, { relationshipPreset: 'general', optionalThirdAxis: false });
+  assert.strictEqual(emotional.relationshipStatus, '', 'Emotional legacy conditions must not masquerade as structural status.');
+  assert(/Legacy relationship note: love/.test(emotional.stanceSummary), 'Unrecognized legacy condition should migrate into Stance Summary without data loss.');
+  assert.strictEqual(normalizeRelationshipStatus('close FRIENDS'), 'Close friends');
 }
 
 {
@@ -246,7 +280,9 @@ assert.strictEqual(SCHEMA_VERSION, 4, 'Narrator-influence schema should be v4.')
   assert.strictEqual(migrated.relationships.length, 1, 'Neutral default legacy relationship should not create noise.');
   assert.strictEqual(migrated.relationships[0].sourceNpcId, 'npc-reagan');
   assert.strictEqual(migrated.relationships[0].targetType, 'protagonist');
-  assert.strictEqual(migrated.relationships[0].stanceSummary, 'Cautious');
+  assert.strictEqual(migrated.relationships[0].relationshipStatus, '', 'Legacy non-structural condition should not become Relationship Status.');
+  assert(/Cautious/.test(migrated.relationships[0].stanceSummary));
+  assert(/Legacy relationship note: repairing/.test(migrated.relationships[0].stanceSummary));
   assert.strictEqual(migrated.npcs[0].residence, 'Room 308');
   assert.strictEqual(migrated.npcs[0].residenceSourceMessageId, 123);
   assert.strictEqual(migrated.config.updateMode, 'manual', 'Migration must not activate unfinished extraction.');
@@ -279,6 +315,23 @@ assert.strictEqual(SCHEMA_VERSION, 4, 'Narrator-influence schema should be v4.')
   assert.strictEqual(edgesToSadie[0].evidence.length, 2, 'Evidence should be combined within cap.');
   const reverse = state.relationships.find((rel) => rel.id === 'rel-self-after-merge');
   assert(reverse && reverse.targetNpcId === 'npc-primary', 'Third-party edge should re-key duplicate target to primary.');
+}
+
+{
+  const panelSource = fs.readFileSync(path.join(__dirname, '..', 'ui', 'panel.html'), 'utf8');
+  const entrySource = fs.readFileSync(path.join(__dirname, '..', 'entry.js'), 'utf8');
+  const definitions = [
+    "Willingness to believe, rely on, and be vulnerable with the target.",
+    "How much the NPC likes the target and enjoys their company; warmth and goodwill, not romance by itself.",
+    "How highly the NPC regards the target's judgment, competence, character, or standing.",
+    "Romantic or physical pull toward the target; it does not imply affection, trust, consent, or obedience.",
+    "Willingness to remain aligned with, defend, or prioritize the target when doing so has a cost; it does not imply obedience."
+  ];
+  for (const definition of definitions) {
+    assert(panelSource.includes(definition), `Panel must expose canonical axis definition: ${definition}`);
+    assert(entrySource.includes(definition), `Narrator injection must use canonical axis definition: ${definition}`);
+  }
+  assert(panelSource.includes('Scale: 0 = very low, 5 = neutral / uncertain, 10 = very high.'), 'UI must explain the relationship axis scale.');
 }
 
 console.log('StoryState Phase 1 state-model tests passed.');

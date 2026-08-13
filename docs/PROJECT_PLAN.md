@@ -143,3 +143,12 @@ Do not add during the core build:
 - autonomous plugin storytelling;
 - relationship visualization graphs;
 - per-turn extraction.
+
+## Relationship field semantics
+
+Relationship Status is structural context only. Current feelings are represented by axes and optional Stance Summary. Legacy free-form Condition values are migrated: recognized structural values become Relationship Status; other values move into Stance Summary.
+
+
+### Relationship semantic consistency
+
+StoryState must show the same brief axis definitions to the user that it supplies to the narrator. Axis names may not be treated as unexplained game stats; each has a stable behavioral meaning used in both UI and injected context.

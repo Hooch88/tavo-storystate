@@ -94,3 +94,5 @@ Gate: NPCs can act on different information—including false beliefs—without 
 - faction/reputation model;
 - richer knowledge distribution tooling;
 - visualization graphs.
+
+- Phase 1B cleanup: status/stance separation and target-NPC visibility are complete before Phase 2 extraction.

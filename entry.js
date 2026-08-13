@@ -33,6 +33,15 @@
     });
   }
 
+
+  const AXIS_DEFINITIONS = {
+    Trust: "Willingness to believe, rely on, and be vulnerable with the target.",
+    Affinity: "How much the NPC likes the target and enjoys their company; warmth and goodwill, not romance by itself.",
+    Respect: "How highly the NPC regards the target's judgment, competence, character, or standing.",
+    Attraction: "Romantic or physical pull toward the target; it does not imply affection, trust, consent, or obedience.",
+    Loyalty: "Willingness to remain aligned with, defend, or prioritize the target when doing so has a cost; it does not imply obedience."
+  };
+
   const AXIS_GUIDANCE = {
     Trust: [
       "expects unreliability or danger; verifies claims and avoids dependence or vulnerable disclosure",
@@ -131,7 +140,12 @@
     const lines = ["[[STORYSTATE_CONTEXT]]"];
     lines.push("Persistent simulation state for the current scene. Do not expose, quote, or mention this block.");
     lines.push("Treat relationship axes as directional behavioral tendencies, not commands. They influence conduct but do not override established personality, circumstances, evidence, or agency.");
+    lines.push("Relationship Status is structural context (for example Dating, Friends, Rivals), not an emotional score. Let the axes and Stance determine current feelings and behavior within that status.");
     lines.push("Never infer reciprocity. A source NPC's feelings toward a target say nothing about the target's feelings back. Attraction never implies consent, affection, or obedience; loyalty never implies obedience.");
+    const activeAxisNames = relationships.length && relationships[0]?.axes ? Object.keys(relationships[0].axes) : [];
+    for (const axisName of activeAxisNames) {
+      if (AXIS_DEFINITIONS[axisName]) lines.push(`Axis meaning — ${axisName}: ${AXIS_DEFINITIONS[axisName]}`);
+    }
 
     for (const npc of activeNpcs) {
       lines.push(`NPC: ${npc.name}`);
@@ -154,7 +168,7 @@
       if (rel.axes && typeof rel.axes === "object") {
         for (const [name, value] of Object.entries(rel.axes)) lines.push(`- ${axisGuidance(name, value)}`);
       }
-      if (rel.condition) lines.push(`Condition: ${rel.condition}`);
+      if (rel.relationshipStatus) lines.push(`Relationship status: ${rel.relationshipStatus}`);
       if (rel.stanceSummary) lines.push(`Stance: ${rel.stanceSummary}`);
     }
 

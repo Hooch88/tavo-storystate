@@ -69,3 +69,17 @@
 - absence of knowledge record is not silently converted into KNOWS;
 - irrelevant information is not promoted to tracked knowledge;
 - consequential knowledge is injected only for relevant NPCs.
+
+### Relationship editor cleanup
+
+- Target NPC control is hidden and disabled when Target type is Protagonist.
+- Relationship Status is structural and does not compete with relationship axes.
+- Legacy free-form Condition values migrate without data loss into Status or Stance Summary.
+
+
+### Axis-definition consistency
+
+- UI shows a brief definition for every active axis.
+- Relationship editor shows the same definition next to the corresponding score.
+- Narrator context uses the same canonical definition strings.
+- Tests fail if UI and injected semantic definitions drift apart.

@@ -70,8 +70,8 @@ With the optional third axis disabled, every preset uses only `Trust` and `Affin
     "Trust": 4,
     "Affinity": 6
   },
-  "condition": "cautious / repairing",
-  "stanceSummary": "Interested but unwilling to give benefit of the doubt.",
+  "relationshipStatus": "Dating",
+  "stanceSummary": "Cautious / repairing; interested but unwilling to give benefit of the doubt.",
   "evidence": [
     {
       "text": "Caught the protagonist lying; later accepted part of the explanation.",
@@ -132,3 +132,20 @@ Retain the useful Living World finite-arc structure later:
 - director-only truth;
 - directive;
 - status/outcome.
+
+### Relationship Status
+
+`relationshipStatus` describes the structural relationship (Friends, Dating, Partners, Rivals, etc.). It does not override axis values. Free-form emotional nuance belongs in `stanceSummary`.
+
+
+## Canonical axis semantics
+
+The user-facing definitions and narrator-injected definitions must remain identical:
+
+- **Trust:** willingness to believe, rely on, and be vulnerable with the target.
+- **Affinity:** how much the NPC likes the target and enjoys their company; warmth and goodwill, not romance by itself.
+- **Respect:** how highly the NPC regards the target's judgment, competence, character, or standing.
+- **Attraction:** romantic or physical pull toward the target; it does not imply affection, trust, consent, or obedience.
+- **Loyalty:** willingness to remain aligned with, defend, or prioritize the target when doing so has a cost; it does not imply obedience.
+
+Scale: **0 = very low, 5 = neutral/uncertain, 10 = very high**.
