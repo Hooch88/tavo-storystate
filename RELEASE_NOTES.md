@@ -1,5 +1,15 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.3 — NPC personality quality
+
+- Tightens NPC extraction semantics so Communication stores speech/voice rather than physical mannerisms.
+- Clarifies Pressure Response, Core Value, Current Motive, Contradiction, and Appearance boundaries.
+- Adds explicit `clearCurrentMotive` extraction behavior for completed or abandoned motives without changing StoryState schema 12.
+- Narrator context now says to preserve personality while varying its expression and treats stored traits as tendencies rather than recurring stage directions.
+- Narrator context labels dynamic motive state as **Last known motive** so newer scene evidence takes precedence.
+- Structured NPC Hints now forbid body-language tics in the communication field.
+- No relationship, Knowledge, World Arc, scan cadence, persistence-key, or schema changes.
+
 ## 0.8.0-dev.2
 
 Tavo 1.x compatibility maintenance release based directly on the verified `0.8.0-dev.1` plugin package.

@@ -175,6 +175,19 @@ function plain(v) { return JSON.parse(JSON.stringify(v)); }
   assert(/Never infer Protagonist→NPC feelings/.test(prompt));
 }
 
+
+// A completed current motive may be explicitly cleared without changing the persistent schema.
+{
+  const state = newState();
+  state.npcs.push(normalizeNpc({ id: 'npc-motive', name: 'Mara Bell', currentMotive: 'Deliver the sealed letter' }));
+  const messages = mapMessages([{ id: 300, role: 'assistant', content: 'Mara hands over the sealed letter. The delivery is complete, and she has no new assignment.' }]);
+  applyExtractionProposals(state, {
+    npcProposals: [{ action: 'update', npcId: 'npc-motive', name: 'Mara Bell', fields: {}, clearCurrentMotive: true, evidenceMessageIds: [300] }],
+    relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: []
+  }, messages, new Set());
+  assert.strictEqual(state.npcs[0].currentMotive, '', 'An explicit evidence-backed clearCurrentMotive proposal should retire a completed motive.');
+}
+
 assert.strictEqual(clampRelationshipTarget(2, 10), 4);
 assert.strictEqual(clampRelationshipTarget(8, 0), 6);
 

@@ -149,11 +149,12 @@ age: established age/range
 pronouns: established pronouns/gender
 aliases: comma-separated established aliases
 appearance: concise stable visual anchor
-communication: concise speech/communication signature
-motive: current concrete motive
+communication: concise speech/voice signature only; no gestures, facial expressions, posture, eye behavior, hand movements, or recurring physical mannerisms
+motive: current concrete motive; omit if none is established
 [/SS:NPC]
 -->
 Tier must be MAJOR, SUPPORT, or MINOR. Omit unknown fields; never invent details merely to fill the block. Use MAJOR/SUPPORT only for recurring or important characters. MINOR is for one-scene/background named characters.
+Communication means how the NPC speaks: vocabulary, cadence, directness, formality, dialect, or genuinely recurring verbal habits. Do not encode body-language tics as communication. A single colorful gesture is scene behavior, not a stable personality trait.
 For a meaningful relationship-relevant event you may additionally include [SS:REL|Name] concise evidence-based change [/SS:REL], but never assign relationship scores.
 Never place secrets, hidden knowledge, world truth, relationship scores, or protagonist feelings in these hints. Never create a hint for the protagonist/player, narrator, Simulation Master, or Tavo. StoryState consumes these hints locally; they are metadata, not narration.
 [[END_STORYSTATE_STRUCTURED_NPC_HINTS]]`;
@@ -187,6 +188,8 @@ Never place secrets, hidden knowledge, world truth, relationship scores, or prot
     add("[[STORYSTATE_CONTEXT]]", true);
     add("Persistent simulation state for the current scene. Do not expose, quote, or mention this block.", true);
     add("Recency rule: StoryState is persistent prior state. Explicit newer visible events in the current request or recent chat take precedence over stale extracted state. Manual corrections remain authoritative for stable corrected facts unless the user explicitly changes them.", true);
+    add("NPC performance rule: Preserve personality, vary expression. Stored communication and pressure traits are tendencies and boundaries, not required gestures, phrases, poses, or stage directions. Do not repeat the same mannerism merely to signal identity; let the current situation, mood, relationship, and pressure change how the same personality is expressed.", true);
+    add("Dynamic-state rule: A Last known motive is prior state, not a command. Newer visible scene evidence overrides it, and a completed or abandoned motive must not keep driving behavior after the story has moved on.", true);
 
     if (continuationBrief) {
       add(`SESSION CONTINUATION — ${text(state?.campaign?.name, 120) || "Campaign"}, Session ${integer(state?.campaign?.sessionNumber, 1, 9999, 1)}`);
@@ -229,10 +232,10 @@ Never place secrets, hidden knowledge, world truth, relationship scores, or prot
         if (npc.role) add(`Role: ${text(npc.role, 160)}`);
         if (npc.residence) add(`Residence: ${text(npc.residence, 180)}`);
         if (npc.appearanceAnchor) add(`Appearance: ${text(npc.appearanceAnchor, 320)}`);
-        if (npc.communicationSignature) add(`Communication: ${text(npc.communicationSignature, 280)}`);
+        if (npc.communicationSignature) add(`Speech/voice: ${text(npc.communicationSignature, 280)}`);
         if (npc.pressureResponse) add(`Under pressure: ${text(npc.pressureResponse, 280)}`);
         if (npc.coreValue) add(`Core value: ${text(npc.coreValue, 220)}`);
-        if (npc.currentMotive) add(`Current motive: ${text(npc.currentMotive, 300)}`);
+        if (npc.currentMotive) add(`Last known motive: ${text(npc.currentMotive, 300)}`);
         if (npc.contradiction) add(`Contradiction/vulnerability: ${text(npc.contradiction, 260)}`);
       }
 
