@@ -1,0 +1,41 @@
+name: One-time StoryState handoff-test refresh
+
+on:
+  push:
+    branches: [refactor/0.9.0-maintenance]
+    paths:
+      - '.github/workflows/refresh-handoff-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/0.9.0-maintenance
+          fetch-depth: 0
+      - name: Refresh schema-12 arc handoff expectations
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tests/state-model.test.cjs')
+          s = p.read_text()
+          old = """  assert.strictEqual(continued.arcs[0].sourceMessageId, null);\n  assert.strictEqual(continued.arcs[0].nested.lastScannedMessageId, null);"""
+          new = """  assert.strictEqual('sourceMessageId' in continued.arcs[0], false, 'Schema 12 arcs should drop unsupported legacy message-id fields.');\n  assert.strictEqual('nested' in continued.arcs[0], false, 'Schema 12 arcs should drop unsupported legacy nested fields.');"""
+          if old not in s:
+            raise SystemExit('Missing stale arc handoff assertions')
+          p.write_text(s.replace(old, new))
+          PY
+      - name: Commit refreshed handoff test baseline
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/state-model.test.cjs
+          git commit -m "test: refresh schema 12 arc handoff expectations"
+          git push origin HEAD:refactor/0.9.0-maintenance
