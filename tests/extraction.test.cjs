@@ -42,7 +42,7 @@ function plain(v) { return JSON.parse(JSON.stringify(v)); }
 {
   const parsed = parseExtractionResponse('```json\n{"npcProposals":[],"relationshipProposals":[]}\n```');
   assert.deepStrictEqual(plain(parsed), { npcProposals: [], relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: [] });
-  assert.throws(() => parseExtractionResponse('not json'), /JSON object/);
+  assert.throws(() => parseExtractionResponse('not json'), /not usable JSON/i);
 }
 
 // Residence safeguard: presence is not residence; explicit living evidence is.
