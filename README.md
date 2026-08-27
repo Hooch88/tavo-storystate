@@ -1,6 +1,6 @@
 # Tavo StoryState
 
-**Current development baseline:** `0.8.0-dev.2`  
+**Current development baseline:** `0.8.0-dev.3`  
 **State schema:** 12  
 **Tavo plugin spec:** 2
 
@@ -94,7 +94,7 @@ The `.tpg` is a ZIP-format archive whose root must contain `manifest.json`. GitH
 
 ## Release safety
 
-`0.8.0-dev.2` is the known-good Tavo 1.2.7 compatibility baseline. It fixed JSON import/export by using Tavo's native file API; scan scheduling and extraction behavior were intentionally unchanged.
+`0.8.0-dev.3` builds on the verified Tavo 1.2.7 file-API baseline. It intentionally changes only NPC extraction/injection semantics for personality quality; scan scheduling, schema 12, persistence keys, relationships, Knowledge, and World Arc behavior are unchanged.
 
 Before testing a development build on a valued campaign, export StoryState first. Keep the last known-good `.tpg` available for rollback.
 
