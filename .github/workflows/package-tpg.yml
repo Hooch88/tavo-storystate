@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Modular source must reproduce the known-good runtime before packaging.
+      # Modular source and schema-12 regressions must pass before packaging.
       - name: Verify modular source and regression suite
         run: npm test
       - name: Read plugin version
