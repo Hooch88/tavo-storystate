@@ -26,6 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Modular source must reproduce the known-good runtime before packaging.
       - name: Verify modular source and regression suite
         run: npm test
       - name: Read plugin version
