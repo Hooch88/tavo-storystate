@@ -2,12 +2,16 @@ name: Package Tavo TPG
 
 on:
   push:
-    branches: [main]
+    branches: [main, refactor/0.9.0-maintenance]
     paths:
       - 'manifest.json'
       - 'entry.js'
       - 'locales/**'
       - 'ui/**'
+      - 'src/**'
+      - 'scripts/build.cjs'
+      - 'tests/**'
+      - 'package.json'
       - '.github/workflows/package-tpg.yml'
   workflow_dispatch:
 
@@ -19,10 +23,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify modular source and regression suite
+        run: npm test
       - name: Read plugin version
         id: version
         shell: bash
         run: echo "version=$(jq -r '.version' manifest.json)" >> "$GITHUB_OUTPUT"
+      - name: Validate manifest/package version parity
+        shell: bash
+        run: test "$(jq -r '.version' manifest.json)" = "$(node -p "require('./package.json').version")"
       - name: Stage package root
         shell: bash
         run: |
@@ -37,7 +49,6 @@ jobs:
           test -f package/entry.js
           test -f package/locales/en.json
           test -f package/ui/panel.html
-          test "$(jq -r '.version' package/manifest.json)" = "${{ steps.version.outputs.version }}"
       - name: Upload installable package
         uses: actions/upload-artifact@v4
         with:
