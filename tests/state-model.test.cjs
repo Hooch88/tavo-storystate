@@ -131,7 +131,7 @@ const {
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
-assert.strictEqual(SCHEMA_VERSION, 7, 'Phase 2 extraction schema should be v7.');
+assert.strictEqual(SCHEMA_VERSION, 12, 'Current StoryState schema should be v12.');
 
 {
   const form = dummyElement();
@@ -165,7 +165,7 @@ assert.strictEqual(SCHEMA_VERSION, 7, 'Phase 2 extraction schema should be v7.')
     arcs: []
   };
   const normalized = normalizeState(oldScaffold);
-  assert.strictEqual(normalized.schemaVersion, 7);
+  assert.strictEqual(normalized.schemaVersion, 12);
   assert.strictEqual(normalized.npcs[0].id, 'npc-a');
   assert.strictEqual(normalized.npcs[0].name, 'Reagan Mercer');
   assert.deepStrictEqual(JSON.parse(JSON.stringify(normalized.npcs[0].aliases)), []);
@@ -201,7 +201,7 @@ assert.strictEqual(SCHEMA_VERSION, 7, 'Phase 2 extraction schema should be v7.')
       axes: { Trust: 8, Attraction: 7, Investment: 4 }
     }]
   });
-  assert.strictEqual(v2.schemaVersion, 7);
+  assert.strictEqual(v2.schemaVersion, 12);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(v2.relationships[0].axes)), { Trust: 8, Affinity: 5, Attraction: 7 }, 'v2 migration should honor the chat model and preserve same-named values.');
   assert.strictEqual('axisPreset' in v2.relationships[0], false);
   assert(v2.diagnostics.some((d) => /chat-wide axis model/i.test(d.text)), 'v2 migration should record a diagnostic.');
@@ -408,8 +408,8 @@ assert.strictEqual(SCHEMA_VERSION, 7, 'Phase 2 extraction schema should be v7.')
   assert.strictEqual(continued.relationships[0].lastMeaningfulChangeMessageId, null);
   assert.strictEqual(continued.knowledgeItems[0].sourceMessageId, null, 'Future knowledge evidence ids must also detach at a session boundary.');
   assert.strictEqual(continued.knowledgeStates[0].sourceMessageId, null);
-  assert.strictEqual(continued.arcs[0].sourceMessageId, null);
-  assert.strictEqual(continued.arcs[0].nested.lastScannedMessageId, null);
+  assert.strictEqual('sourceMessageId' in continued.arcs[0], false, 'Schema 12 arcs should drop unsupported legacy message-id fields.');
+  assert.strictEqual('nested' in continued.arcs[0], false, 'Schema 12 arcs should drop unsupported legacy nested fields.');
   assert.strictEqual(continued.meta.lastScannedMessageId, null);
   assert.strictEqual(continued.meta.lastScannedFloor, null);
   assert.strictEqual(continued.meta.scanStatus, 'idle');

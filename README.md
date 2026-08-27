@@ -1,111 +1,108 @@
 # Tavo StoryState
 
-**Status:** Pre-alpha Phase 2 build (`0.2.0-dev.1`)
+**Current development baseline:** `0.8.0-dev.2`  
+**State schema:** 12  
+**Tavo plugin spec:** 2
 
-StoryState is a Tavo plugin project for persistent simulation state in long-running AI role-play. It is designed for narrator/simulation-master workflows where NPCs are created organically rather than represented by individual character cards.
+StoryState is a persistent simulation-state plugin for long-running Tavo role-play. It tracks organically introduced NPCs and selected world state, then injects only relevant state into narrator requests so the story can remain consistent without turning every NPC into a separate character card.
 
-StoryState is **not** a renamed Living World release. It is a new direction informed by lessons from the Living World 0.2.2 prototype and CCT Relationship 3.8.1 testing.
+## Current capabilities
 
-## Core responsibility
+StoryState 0.8 includes:
 
-StoryState owns persistent, selectively injected state:
+- canonical NPC identity, aliases, stable characterization anchors, residence, motives, and manual overrides;
+- directional NPC → protagonist and NPC → NPC relationships with configurable axes;
+- consequential Knowledge & Secrets with directional NPC knowledge states;
+- finite World Arcs with active/dormant/resolved lifecycle and manual director nudges;
+- Activity and Diagnostics views;
+- conservative batched assisted extraction plus manual **Scan Now**;
+- stale-scan ownership/lease protection and recovery;
+- model-only context injection through `generation:prepare`;
+- optional Structured NPC Hints and optional Pura adapter, both off by default;
+- campaign/session handoff between fresh chats;
+- recovery snapshots and Living World import;
+- native Tavo JSON import/export on current Tavo builds;
+- mobile-first six-tab UI: Characters, Relations, Knowledge, World, Activity, Settings.
 
-- canonical NPC identity and aliases;
-- stable characterization anchors;
-- evidence-gated residence;
-- directional NPC → Protagonist and NPC → NPC relationships;
-- consequential knowledge, secrets, false beliefs, and suspicions (planned Phase 4);
-- finite world arcs after the NPC state loop is stable.
+## Runtime boundaries
 
-It does **not** replace the narrator preset, campaign card, memory system, or Lorebook.
+StoryState owns persistent simulation state. It does **not** replace the narrator preset, campaign card, memory system, Lorebook, Visual Library, or Willforge.
 
-## Current build
+Manual corrections remain authoritative over older extracted evidence. Relationship axes are directional behavioral tendencies, not commands; attraction never implies consent or affection, and loyalty never implies obedience.
 
-Phase 1 now implements the persistent manual state foundation on top of the initial integration scaffold:
+## Source layout
 
-- `specVersion: 2` manifest;
-- chat sidebar entry;
-- chat-scoped state namespace (`storyState.*`);
-- after-assistant scan scheduling path;
-- supported `generation:prepare` model-only context hook;
-- canonical NPC IDs, aliases, rename-safe edits and duplicate merge;
-- evidence-preserving residence field;
-- separate directional relationship records using one chat-wide relationship model;
-- manual NPC and relationship editing;
-- JSON export/import and recovery snapshots;
-- explicit, non-destructive Living World 0.2.2 import;
-- relevant NPC and relationship state now influences narration through model-only context injection;
-- narrator influence is enabled by default per chat and can be disabled in StoryState Settings;
-- relationship values are translated into behavioral tendencies rather than injected as unexplained numbers;
-- recent visible messages are used locally for relevance so pronoun follow-ups can retain the right NPC state;
-- campaign/session handoff through a bounded global registry;
-- fresh-chat continuation imports an independent StoryState copy while leaving the old session untouched;
-- invalid old-chat message IDs are detached at the session boundary while evidence text and semantic state are preserved;
-- optional continuation brief seeds the new session for four successful narrator replies, then expires automatically;
-- Phase 2 batched extraction of meaningful NPC and directional relationship changes;
-- Assisted mode scans automatically after a configurable number of saved story messages; Manual mode uses **Scan Now** only;
-- one independent `tavo.generate(...)` extraction call per scan with `context: false` and an explicit bounded message/state packet;
-- extraction evidence IDs are validated against the supplied saved messages before any state mutation;
-- recurring-NPC admission requires evidence from at least two supplied messages, while major/relationship/arc significance can justify earlier admission;
-- residence extraction requires explicit living/residence evidence; presence alone is rejected;
-- existing relationship score changes are hard-bounded to ±2 per scan and most scenes are instructed to produce no change;
-- manual relationship edits become authoritative through the current message ID, so older extracted evidence cannot overwrite a user correction;
-- stable manually corrected NPC fields remain locked while dynamic `currentMotive` can continue to evolve from newer evidence;
-- extraction commits use a recovery snapshot, one whole-state write, and exact re-read verification;
-- Visual Library utility image bubbles are excluded from scan cadence and evidence.
+The installed Tavo artifact remains deliberately simple:
 
-## Repository lineage
-
-The git tag `living-world-0.2.2-reference` points to an untouched import of the prior Living World 0.2.2 implementation. Current `main` deliberately does not carry that old source tree forward wholesale.
-
-## Docs
-
-- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) — source of truth
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — responsibility boundaries and state loop
-- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — target schema
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — phased implementation
-- [`docs/LEGACY_AUDIT.md`](docs/LEGACY_AUDIT.md) — KEEP / REFACTOR / DELETE review of Living World 0.2.2
-- [`docs/TAVO_API_NOTES.md`](docs/TAVO_API_NOTES.md) — verified host API assumptions
-- [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md) — acceptance tests
-
-## Build a `.tpg`
-
-From the repository root:
-
-```bash
-zip -r ../tavo-storystate.tpg manifest.json entry.js locales ui
+```text
+manifest.json
+entry.js
+locales/en.json
+ui/panel.html
 ```
 
-The manifest must remain at the package root.
+Development source is modular under `src/` and is assembled into the two runtime artifacts by `scripts/build.cjs`:
 
-## Safety
+```text
+src/
+  entry/
+    01-core.js
+    02-context.js
+    03-hooks.js
+  ui/
+    prefix.html
+    styles.css
+    markup.html
+    runtime/
+      01-state.js
+      02-rendering-editors.js
+      03-scan-controls-handoff.js
+      04-extraction-parser.js
+      05-npc-hint-adapters.js
+      06-proposal-application.js
+      07-scan-runner.js
+      08-io-bootstrap.js
+```
 
-Use development builds only in a backup/disposable Tavo chat. Phase 2 now changes persistent state automatically in Assisted mode, so review the Diagnostics and Last Scan summary during early device testing. Export StoryState before testing on a valued campaign.
+This keeps Tavo's runtime package unchanged while making development safer and easier to review.
 
-## Relationship semantics
+## Development
 
-Relationship axes drive behavioral tendencies. **Relationship Status** is structural context (for example Friends, Dating, Partners, Rivals) rather than a competing emotion field. **Stance Summary** is the optional free-form psychological nuance.
+Verify generated runtime artifacts are synchronized with modular source:
 
+```bash
+npm run build:check
+```
 
-### Axis definitions
+Regenerate them after editing `src/`:
 
-- **Trust:** willingness to believe, rely on, and be vulnerable with the target.
-- **Affinity:** how much the NPC likes the target and enjoys their company; warmth and goodwill, not romance by itself.
-- **Respect:** how highly the NPC regards the target's judgment, competence, character, or standing.
-- **Attraction:** romantic or physical pull; it does not imply affection, trust, consent, or obedience.
-- **Loyalty:** willingness to remain aligned with, defend, or prioritize the target when doing so has a cost; it does not imply obedience.
+```bash
+npm run build
+```
 
-The UI shows these same definitions that StoryState supplies to the narrator, so the visible meaning and model behavior stay aligned.
+Run the full regression suite:
 
-## Session handoff
+```bash
+npm test
+```
 
-Use **Settings → Campaign session handoff → Prepare new session…** near the end of a chat. StoryState saves a cross-chat handoff containing the exact structured state plus an optional continuation brief. Open a fresh Tavo chat with the same campaign/narrator setup, open StoryState, and choose **Continue here** on the prepared handoff.
+The build-parity check is intentional: a pure maintenance refactor must be able to reproduce the known-good runtime artifact exactly unless a release deliberately changes behavior.
 
-The old chat is not modified. The new chat receives its own independent StoryState copy and increments the campaign session number. Old message IDs are cleared because they do not identify messages in the fresh chat; evidence text, NPC state, relationship state, knowledge arrays, arc arrays, settings, and manual overrides remain.
+## Packaging
 
+The `.tpg` is a ZIP-format archive whose root must contain `manifest.json`. GitHub Actions validates the build and packages the runtime files.
 
-### dev.7 startup hotfix
+## Release safety
 
-- StoryState no longer replays a persisted sidebar-open command when Tavo starts. The app can return to its normal last-chat view until StoryState is explicitly opened.
+`0.8.0-dev.2` is the known-good Tavo 1.2.7 compatibility baseline. It fixed JSON import/export by using Tavo's native file API; scan scheduling and extraction behavior were intentionally unchanged.
 
-- StoryState publishes `com.hooch88.tavo.campaignIdentity` as the stable cross-plugin campaign identity bridge for companion plugins such as Visual Library.
+Before testing a development build on a valued campaign, export StoryState first. Keep the last known-good `.tpg` available for rollback.
+
+## Documentation
+
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — current release notes
+- [`docs/REFACTORING.md`](docs/REFACTORING.md) — maintenance-refactor rules and module boundaries
+- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) — original project plan and historical direction
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture notes
+- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — state model notes
+- [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md) — test strategy

@@ -59,7 +59,7 @@ const context = {
   console, Math, Date, JSON, Object, Array, Set, Map, String, Number, Boolean, Promise,
   tavo, __storyStateTestHarness: harness,
   document: { querySelector: getElement, querySelectorAll() { return []; }, documentElement: { style: {} }, body: dummyElement(), createElement() { return dummyElement(); } },
-  setInterval() { return 1; }, clearInterval() {}, setTimeout(fn) { if (typeof fn === 'function') fn(); return 1; },
+  setInterval() { return 1; }, clearInterval() {}, setTimeout() { return 1; }, clearTimeout() {},
   confirm() { return true; }, prompt() { return null; }, FormData: function FormData() {}, Blob: function Blob() {},
   URL: { createObjectURL() { return 'blob:test'; }, revokeObjectURL() {} },
 };
