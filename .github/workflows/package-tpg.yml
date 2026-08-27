@@ -37,6 +37,7 @@ jobs:
           test -f package/entry.js
           test -f package/locales/en.json
           test -f package/ui/panel.html
+          test "$(jq -r '.version' package/manifest.json)" = "${{ steps.version.outputs.version }}"
       - name: Upload installable package
         uses: actions/upload-artifact@v4
         with:
