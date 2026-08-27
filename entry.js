@@ -6,6 +6,8 @@
   const UI_COMMAND_KEY = "storyState.uiCommand";
   const SCAN_REQUEST_KEY = "storyState.scanRequest";
   const CONTINUATION_MAX = 6000;
+  const AUTO_SCAN_SETTLE_MS = 1500;
+  let autoScanPending = false;
 
   function integer(value, min, max, fallback = 0) {
     const parsed = Number.parseInt(value, 10);
@@ -193,6 +195,35 @@
     return lines.join("\n");
   }
 
+  function scheduleAutomaticScan(campaignId) {
+    if (autoScanPending) return;
+    autoScanPending = true;
+
+    setTimeout(() => {
+      autoScanPending = false;
+      try {
+        const state = tavo.get(STATE_KEY, "chat");
+        if (!state || typeof state !== "object" || Array.isArray(state)) return;
+        if (campaignId && state.campaign?.id && state.campaign.id !== campaignId) return;
+
+        const cadence = integer(state.config?.scanEveryPosts, 2, 100, 20);
+        const postsSinceScan = integer(state.meta?.postsSinceScan, 0, 1000000, 0);
+        const assisted = state.config?.updateMode === "assisted";
+        const scanIdle = !["queued", "running"].includes(state.meta?.scanStatus);
+        if (!assisted || !scanIdle || postsSinceScan < cadence) return;
+
+        tavo.set(SCAN_REQUEST_KEY, {
+          type: "scan",
+          mode: "automatic",
+          nonce: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+        }, "chat");
+        tavo.set(`${STATE_KEY}.meta.scanStatus`, "queued", "chat");
+      } catch (error) {
+        console.error(`[${PLUGIN_LABEL}] Could not queue settled automatic scan.`, error);
+      }
+    }, AUTO_SCAN_SETTLE_MS);
+  }
+
   tavo.plugin.onSidebarAction("open-storystate", async () => {
     try {
       tavo.set(UI_COMMAND_KEY, {
@@ -207,6 +238,8 @@
 
   // Tavo saves message:added only after streaming completes. Assisted extraction is
   // scheduled from assistant messages so it never competes with the narrator request.
+  // Tavo 1.x can keep the chat runtime busy briefly after the saved message arrives,
+  // so automatic scans get a short settle window before the extraction request queues.
   tavo.plugin.on("message:added", async (event) => {
     try {
       const message = event?.message;
@@ -227,12 +260,7 @@
       const scanIdle = !["queued", "running"].includes(state.meta?.scanStatus);
 
       if (message.role === "assistant" && assisted && scanIdle && postsSinceScan >= cadence) {
-        tavo.set(SCAN_REQUEST_KEY, {
-          type: "scan",
-          mode: "automatic",
-          nonce: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-        }, "chat");
-        tavo.set(`${STATE_KEY}.meta.scanStatus`, "queued", "chat");
+        scheduleAutomaticScan(text(state.campaign?.id, 120));
       }
     } catch (error) {
       console.error(`[${PLUGIN_LABEL}] Could not schedule state scan.`, error);
