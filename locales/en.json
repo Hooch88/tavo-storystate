@@ -1,5 +1,5 @@
 {
   "plugin.name": "Tavo StoryState",
-  "plugin.description": "Persistent NPC identity, directional relationships, knowledge state, and selective simulation context for Tavo role-play.",
+  "plugin.description": "Persistent NPC identity, directional relationships, knowledge state, finite world arcs, and selective simulation context for Tavo role-play.",
   "actions.openStoryState": "StoryState"
 }

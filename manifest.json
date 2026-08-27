@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.2.0-dev.2",
+  "version": "0.8.0-dev.2",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -36,11 +36,6 @@
       {
         "id": "storystate-panel",
         "src": "ui/panel.html",
-        "mount": "/chat/body/end"
-      },
-      {
-        "id": "storystate-tavo-1x-compat",
-        "src": "ui/compat-1.2.html",
         "mount": "/chat/body/end"
       }
     ]

@@ -1,6 +1,6 @@
 {
   "name": "tavo-storystate",
-  "version": "0.2.0-dev.2",
+  "version": "0.8.0-dev.2",
   "private": true,
   "scripts": {
     "test": "node tests/state-model.test.cjs && node tests/context-injection.test.cjs && node tests/extraction.test.cjs && node tests/extraction-run.test.cjs",
