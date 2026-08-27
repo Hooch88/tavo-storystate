@@ -26,55 +26,6 @@ jobs:
             mv package.json.tmp package.json
           fi
           rm -rf .sync
-          rm -f .github/workflows/sync-080.yml
-          cat > .github/workflows/package-tpg.yml <<'EOF'
-          name: Package Tavo TPG
-
-          on:
-            push:
-              branches: [main]
-              paths:
-                - 'manifest.json'
-                - 'entry.js'
-                - 'locales/**'
-                - 'ui/**'
-                - '.github/workflows/package-tpg.yml'
-            workflow_dispatch:
-
-          permissions:
-            contents: read
-
-          jobs:
-            package:
-              runs-on: ubuntu-latest
-              steps:
-                - uses: actions/checkout@v4
-                - name: Read plugin version
-                  id: version
-                  shell: bash
-                  run: echo "version=$(jq -r '.version' manifest.json)" >> "$GITHUB_OUTPUT"
-                - name: Stage package root
-                  shell: bash
-                  run: |
-                    mkdir -p package/locales package/ui
-                    cp manifest.json entry.js package/
-                    cp locales/en.json package/locales/
-                    cp ui/panel.html package/ui/
-                - name: Validate archive root
-                  shell: bash
-                  run: |
-                    test -f package/manifest.json
-                    test -f package/entry.js
-                    test -f package/locales/en.json
-                    test -f package/ui/panel.html
-                - name: Upload installable package
-                  uses: actions/upload-artifact@v4
-                  with:
-                    name: tavo-storystate-${{ steps.version.outputs.version }}
-                    path: package/
-                    if-no-files-found: error
-                    retention-days: 30
-          EOF
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
