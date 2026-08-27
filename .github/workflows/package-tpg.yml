@@ -1,0 +1,48 @@
+name: Package Tavo TPG
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'manifest.json'
+      - 'entry.js'
+      - 'locales/**'
+      - 'ui/**'
+      - 'README.md'
+      - '.github/workflows/package-tpg.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read plugin version
+        id: version
+        shell: bash
+        run: echo "version=$(jq -r '.version' manifest.json)" >> "$GITHUB_OUTPUT"
+      - name: Stage package root
+        shell: bash
+        run: |
+          mkdir -p package/locales package/ui
+          cp manifest.json entry.js README.md package/
+          cp locales/en.json package/locales/
+          cp ui/panel.html ui/compat-1.2.html package/ui/
+      - name: Validate archive root
+        shell: bash
+        run: |
+          test -f package/manifest.json
+          test -f package/entry.js
+          test -f package/locales/en.json
+          test -f package/ui/panel.html
+          test -f package/ui/compat-1.2.html
+      - name: Upload installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: tavo-storystate-${{ steps.version.outputs.version }}
+          path: package/
+          if-no-files-found: error
+          retention-days: 30
