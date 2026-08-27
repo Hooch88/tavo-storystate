@@ -408,8 +408,8 @@ assert.strictEqual(SCHEMA_VERSION, 12, 'Current StoryState schema should be v12.
   assert.strictEqual(continued.relationships[0].lastMeaningfulChangeMessageId, null);
   assert.strictEqual(continued.knowledgeItems[0].sourceMessageId, null, 'Future knowledge evidence ids must also detach at a session boundary.');
   assert.strictEqual(continued.knowledgeStates[0].sourceMessageId, null);
-  assert.strictEqual(continued.arcs[0].sourceMessageId, null);
-  assert.strictEqual(continued.arcs[0].nested.lastScannedMessageId, null);
+  assert.strictEqual('sourceMessageId' in continued.arcs[0], false, 'Schema 12 arcs should drop unsupported legacy message-id fields.');
+  assert.strictEqual('nested' in continued.arcs[0], false, 'Schema 12 arcs should drop unsupported legacy nested fields.');
   assert.strictEqual(continued.meta.lastScannedMessageId, null);
   assert.strictEqual(continued.meta.lastScannedFloor, null);
   assert.strictEqual(continued.meta.scanStatus, 'idle');
