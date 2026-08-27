@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Modular source and all current schema-12 regression tests must pass before packaging.
+      # Modular source and all current schema-12 regressions, including scan integration, must pass before packaging.
       - name: Verify modular source and regression suite
         run: npm test
       - name: Read plugin version
