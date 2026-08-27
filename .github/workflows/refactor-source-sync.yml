@@ -1,0 +1,82 @@
+name: One-time StoryState source split
+
+on:
+  push:
+    branches: [refactor/0.9.0-maintenance]
+    paths:
+      - '.github/workflows/refactor-source-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/0.9.0-maintenance
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Split known-good runtime artifacts into modular source
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const mkdir = (p) => fs.mkdirSync(p, { recursive: true });
+          mkdir('src/entry');
+          mkdir('src/ui/runtime');
+
+          const entry = fs.readFileSync('entry.js', 'utf8').split(/(?<=\n)/);
+          const entryRegions = [
+            ['01-core.js', 1, 104],
+            ['02-context.js', 105, 399],
+            ['03-hooks.js', 400, entry.length]
+          ];
+          for (const [name, start, end] of entryRegions) {
+            fs.writeFileSync(path.join('src/entry', name), entry.slice(start - 1, end).join(''));
+          }
+
+          const panel = fs.readFileSync('ui/panel.html', 'utf8');
+          const styleMatch = panel.match(/<style>\n?([\s\S]*?)\n?<\/style>/);
+          const scriptMatch = panel.match(/<script>\n?([\s\S]*?)\n?<\/script>\s*$/);
+          if (!styleMatch || !scriptMatch) throw new Error('Could not split ui/panel.html');
+          const styleStart = panel.indexOf(styleMatch[0]);
+          const styleEnd = styleStart + styleMatch[0].length;
+          const scriptStart = panel.lastIndexOf(scriptMatch[0]);
+          fs.writeFileSync('src/ui/prefix.html', panel.slice(0, styleStart));
+          fs.writeFileSync('src/ui/styles.css', styleMatch[1]);
+          fs.writeFileSync('src/ui/markup.html', panel.slice(styleEnd, scriptStart));
+
+          const runtime = scriptMatch[1].split(/(?<=\n)/);
+          const runtimeRegions = [
+            ['01-state.js', 1, 60],
+            ['02-rendering-editors.js', 61, 103],
+            ['03-scan-controls-handoff.js', 104, 114],
+            ['04-extraction-parser.js', 115, 130],
+            ['05-npc-hint-adapters.js', 131, 145],
+            ['06-proposal-application.js', 146, 167],
+            ['07-scan-runner.js', 168, 178],
+            ['08-io-bootstrap.js', 179, runtime.length]
+          ];
+          for (const [name, start, end] of runtimeRegions) {
+            fs.writeFileSync(path.join('src/ui/runtime', name), runtime.slice(start - 1, end).join(''));
+          }
+          NODE
+          node scripts/build.cjs --check
+      - name: Commit generated modular source
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          if git diff --cached --quiet; then
+            echo "No source split changes to commit."
+          else
+            git commit -m "refactor: split StoryState runtime into modular source"
+            git push origin HEAD:refactor/0.9.0-maintenance
+          fi
