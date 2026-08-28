@@ -24,6 +24,7 @@ let messages = [
 ];
 let generateCalls = [];
 let generateMode = 'success';
+let repairResponses = [];
 const tavo = {
   get(key) { return vars.has(key) ? vars.get(key) : null; },
   set(key, value) { vars.set(key, value); },
@@ -40,6 +41,7 @@ const tavo = {
   async generate(prompt, options) {
     generateCalls.push({ prompt, options });
     if (generateMode === 'fail') throw new Error('simulated extractor failure');
+    if (generateMode === 'repair') return repairResponses.shift();
     return JSON.stringify({
       npcProposals: [{
         action: 'create', name: 'Mara Bell', admissionReason: 'recurring', evidenceMessageIds: [101, 103],
@@ -49,7 +51,10 @@ const tavo = {
         action: 'create', sourceName: 'Mara Bell', targetType: 'protagonist',
         axisTargets: { Trust: 6, Affinity: 6 }, relationshipStatus: 'Acquaintances',
         evidenceMessageIds: [101, 103]
-      }]
+      }],
+      informationProposals: [],
+      knowledgeProposals: [],
+      arcProposals: []
     });
   },
   utils: { toast() {} }
@@ -86,9 +91,37 @@ vm.runInNewContext(scripts.at(-1)[1], context, { filename: 'ui/panel.html' });
   assert.strictEqual(after.relationships[0].sourceNpcId, after.npcs[0].id);
   assert(vars.get('storyState.recovery')?.storyState, 'A state-changing extraction should create a recovery snapshot.');
 
+  // A schema-invalid response must use both bounded repair attempts before succeeding.
+  const callsBeforeRepair = generateCalls.length;
+  generateMode = 'repair';
+  repairResponses = [
+    '{"analysis":"still not the StoryState schema"}',
+    JSON.stringify({ npcProposals: [], relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: [] })
+  ];
+  let repairNotices = 0;
+  const repaired = await harness.parseExtractionWithOneRepair('{"analysis":"not the StoryState schema"}', () => { repairNotices += 1; });
+  assert.strictEqual(repaired.repaired, true);
+  assert.strictEqual(repairNotices, 2, 'Both bounded repair attempts should be observable.');
+  assert.strictEqual(generateCalls.length - callsBeforeRepair, 2, 'Schema-invalid output should receive at most two repair calls.');
+  generateMode = 'success';
+
+  // Thinking-model batches are bounded so a long backlog is not sent in one request.
+  const storyMessages = messages;
+  messages = Array.from({ length: 30 }, (_, index) => ({
+    id: 500 + index,
+    role: index % 2 ? 'user' : 'assistant',
+    hidden: false,
+    content: `Message ${index} ` + 'x'.repeat(1900)
+  }));
+  const bounded = await harness.collectScanBatch(harness.newState());
+  assert(bounded.messages.length <= 16, 'A scan batch must contain no more than 16 floors.');
+  assert(bounded.messages.reduce((sum, message) => sum + message.content.length, 0) <= 24000, 'A scan batch must stay within the 24,000-character target.');
+  assert.strictEqual(bounded.hasMore, true, 'A bounded batch must preserve backlog visibility.');
+  messages = storyMessages;
+
   // No new messages: no second generation call.
   await harness.runExtractionScan({ type: 'scan', mode: 'manual' });
-  assert.strictEqual(generateCalls.length, 1, 'Scanning with no new narrative messages should not call the model.');
+  assert.strictEqual(generateCalls.length, callsBeforeRepair + 2, 'Scanning with no new narrative messages should not call the model.');
 
   // A later extractor failure should preserve semantic state and surface error status.
   messages.push({ id: 104, role: 'assistant', hidden: false, content: 'Mara Bell leaves for the night.' });

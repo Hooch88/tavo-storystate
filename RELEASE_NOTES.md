@@ -1,5 +1,22 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.6 — Release-integrity and extractor-schema validation
+
+- Requires all five proposal arrays before extractor output can be accepted; schema-less JSON can no longer advance the scan cursor as an empty successful scan.
+- Commits the generated panel containing the dev.5 runtime hardening.
+- Makes tests fail when generated runtime files drift from modular source instead of silently rebuilding in CI.
+- Adds behavioral regression coverage for schema validation, two-stage repair, pressure-response gating, and bounded batching.
+- Corrects repair-attempt progress and diagnostic wording.
+- Keeps state schema 12 and all persistence keys unchanged.
+
+## 0.8.0-dev.5 — Thinking-model extractor hardening
+
+- Removes closed `<think>` and `<analysis>` blocks before parsing extractor output.
+- Allows up to two bounded syntax-only repair attempts, capped at 120 seconds and 60 seconds.
+- Reduces extraction batches to 16 floors and 24,000 characters to reduce truncation risk.
+- Requires an existing NPC, two evidence messages, and a clean psychological pattern before extraction can establish `pressureResponse`.
+- Keeps state schema 12 and all persistence keys unchanged.
+
 ## 0.8.0-dev.4 — Structured voice hardening
 
 - Structured NPC Hints no longer define Communication/Speech fields.
