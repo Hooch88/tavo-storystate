@@ -13,6 +13,17 @@ on:
       - 'tests/**'
       - 'package.json'
       - '.github/workflows/package-tpg.yml'
+  pull_request:
+    paths:
+      - 'manifest.json'
+      - 'entry.js'
+      - 'locales/**'
+      - 'ui/**'
+      - 'src/**'
+      - 'scripts/build.cjs'
+      - 'tests/**'
+      - 'package.json'
+      - '.github/workflows/package-tpg.yml'
   workflow_dispatch:
 
 permissions:
@@ -26,8 +37,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Modular source and all current schema-12 regressions, including scan integration, must pass before packaging.
-      - name: Verify modular source and regression suite
+      # Fail if generated runtime files drift from source; never mask drift by rebuilding in CI.
+      - name: Verify generated runtime parity and regression suite
         run: npm test
       - name: Read plugin version
         id: version

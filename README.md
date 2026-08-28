@@ -1,7 +1,7 @@
 # Tavo StoryState
 
-**Current development baseline:** `0.8.0-dev.4`  
-**State schema:** 12  
+**Current development baseline:** `0.8.0-dev.6`
+**State schema:** 12
 **Tavo plugin spec:** 2
 
 StoryState is a persistent simulation-state plugin for long-running Tavo role-play. It tracks organically introduced NPCs and selected world state, then injects only relevant state into narrator requests so the story can remain consistent without turning every NPC into a separate character card.
@@ -94,7 +94,7 @@ The `.tpg` is a ZIP-format archive whose root must contain `manifest.json`. GitH
 
 ## Release safety
 
-`0.8.0-dev.4` builds on the verified Tavo 1.2.7 file-API baseline. It intentionally changes only NPC extraction/injection semantics for personality quality; scan scheduling, schema 12, persistence keys, relationships, Knowledge, and World Arc behavior are unchanged.
+`0.8.0-dev.6` builds on the verified Tavo 1.2.7 file-API baseline. It adds bounded thinking-model JSON repair, strict five-array extractor-schema validation, smaller extraction batches, conservative pressure-response learning, and build-parity enforcement. Schema 12, persistence keys, relationships, Knowledge, and World Arc behavior remain unchanged.
 
 Before testing a development build on a valued campaign, export StoryState first. Keep the last known-good `.tpg` available for rollback.
 

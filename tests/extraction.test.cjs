@@ -32,17 +32,25 @@ vm.runInNewContext(matches.at(-1)[1], context, { filename: 'ui/panel.html' });
 
 const {
   newState, normalizeNpc, normalizeRelationship, applyExtractionProposals, parseExtractionResponse,
-  buildExtractionPrompt, clampRelationshipTarget, evidenceLooksLikeResidence, evidenceLooksLikeResidenceMove
+  buildExtractionPrompt, buildExtractionRepairPrompt, clampRelationshipTarget, evidenceLooksLikeResidence, evidenceLooksLikeResidenceMove
 } = harness;
 
 function mapMessages(messages) { return new Map(messages.map(m => [m.id, m])); }
 function plain(v) { return JSON.parse(JSON.stringify(v)); }
 
-// JSON parser tolerates common fenced output but still requires one JSON object.
+const emptyProposalJson = JSON.stringify({
+  npcProposals: [], relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: []
+});
+assert(buildExtractionRepairPrompt('bad output').includes('five top-level array keys'), 'Repair prompt must describe all five required proposal arrays.');
+assert(buildExtractionRepairPrompt('bad output').includes('arcProposals'), 'Repair prompt must retain the world-arc proposal array.');
+
+// JSON parser tolerates common thinking/fenced output but requires the complete proposal schema.
 {
-  const parsed = parseExtractionResponse('```json\n{"npcProposals":[],"relationshipProposals":[]}\n```');
+  const parsed = parseExtractionResponse(`<think>private analysis</think>\n\`\`\`json\n${emptyProposalJson}\n\`\`\``);
   assert.deepStrictEqual(plain(parsed), { npcProposals: [], relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: [] });
   assert.throws(() => parseExtractionResponse('not json'), /not usable JSON/i);
+  assert.throws(() => parseExtractionResponse('{"analysis":"nothing changed"}'), /proposal schema/i, 'Schema-less JSON must not be accepted as an empty successful scan.');
+  assert.throws(() => parseExtractionResponse('{"npcProposals":[],"relationshipProposals":[]}'), /missing required arrays/i, 'Partial extractor schemas must be repaired instead of silently normalized.');
 }
 
 // Residence safeguard: presence is not residence; explicit living evidence is.
@@ -106,6 +114,35 @@ function plain(v) { return JSON.parse(JSON.stringify(v)); }
   assert.strictEqual(state.npcs[0].role, 'Student');
   assert.strictEqual(state.npcs[0].currentMotive, 'Confront Priya about the rumor');
   assert.strictEqual(state.npcs[0].updatedBy, 'extraction');
+}
+
+// Pressure response is extraction-only stable canon: never create it from an introduction,
+// never accept one evidence message, and reject physical stage directions.
+{
+  const state = newState();
+  state.npcs.push(normalizeNpc({ id: 'npc-pressure', name: 'Mara Bell' }));
+  const twoMessages = mapMessages([
+    { id: 41, role: 'assistant', content: 'Under threat, Mara slows down and prioritizes protecting the residents.' },
+    { id: 42, role: 'assistant', content: 'During the fire alarm, Mara again puts resident safety before her own plans.' }
+  ]);
+
+  applyExtractionProposals(state, {
+    npcProposals: [{ action: 'update', npcId: 'npc-pressure', name: 'Mara Bell', evidenceMessageIds: [41], fields: { pressureResponse: 'Prioritizes resident safety over personal goals' } }],
+    relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: []
+  }, twoMessages, new Set());
+  assert.strictEqual(state.npcs[0].pressureResponse, '', 'One evidence message must not establish a pressure response.');
+
+  applyExtractionProposals(state, {
+    npcProposals: [{ action: 'update', npcId: 'npc-pressure', name: 'Mara Bell', evidenceMessageIds: [41, 42], fields: { pressureResponse: 'Her jaw tightens and she stares before acting' } }],
+    relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: []
+  }, twoMessages, new Set());
+  assert.strictEqual(state.npcs[0].pressureResponse, '', 'Physical stage directions must not become a pressure response.');
+
+  applyExtractionProposals(state, {
+    npcProposals: [{ action: 'update', npcId: 'npc-pressure', name: 'Mara Bell', evidenceMessageIds: [41, 42], fields: { pressureResponse: 'Prioritizes resident safety over personal goals' } }],
+    relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: []
+  }, twoMessages, new Set());
+  assert.strictEqual(state.npcs[0].pressureResponse, 'Prioritizes resident safety over personal goals');
 }
 
 // An extracted residence may change only with explicit move evidence; a manual residence remains locked.
