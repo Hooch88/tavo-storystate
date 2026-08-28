@@ -34,11 +34,11 @@
     try{return {proposals:parseExtractionResponse(raw),repaired:false}}
     catch(firstError){
       if(typeof onRepair==="function")onRepair();
-      const firstRepairPrompt=buildExtractionRepairPrompt(raw),firstRepairedRaw=await withTimeout(tavo.generate(firstRepairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:6000}}),SCAN_REPAIR_TIMEOUT_MS,"JSON repair");
+      const firstRepairPrompt=buildExtractionRepairPrompt(raw),firstRepairedRaw=await withTimeout(tavo.generate(firstRepairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:6000}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,120000),"JSON repair");
       try{return {proposals:parseExtractionResponse(firstRepairedRaw),repaired:true}}
       catch(secondError){
         if(typeof onRepair==="function")onRepair();
-        const secondRepairPrompt=buildExtractionRepairPrompt(firstRepairedRaw),secondRepairedRaw=await withTimeout(tavo.generate(secondRepairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:6000}}),SCAN_REPAIR_TIMEOUT_MS,"JSON repair retry");
+        const secondRepairPrompt=buildExtractionRepairPrompt(firstRepairedRaw),secondRepairedRaw=await withTimeout(tavo.generate(secondRepairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:6000}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),"JSON repair retry");
         try{return {proposals:parseExtractionResponse(secondRepairedRaw),repaired:true}}
         catch(thirdError){
           const err=new Error(`Extractor response was not usable JSON after two repair attempts. ${text(thirdError?.message||secondError?.message||firstError?.message||"",180)}`);
