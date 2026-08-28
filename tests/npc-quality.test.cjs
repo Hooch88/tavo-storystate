@@ -17,4 +17,14 @@ assert(!panel.includes('communicationSignature:text(fields.communication||fields
 assert(panel.includes('clearCurrentMotive=true'), 'Extractor must know how to retire a completed motive explicitly.');
 assert(panel.includes('A single colorful behavior is scene behavior, not a stable personality trait.'), 'Extractor must not promote one-scene gestures into personality anchors.');
 
+assert(panel.includes('PRESSURE RESPONSE EVIDENCE — mandatory'), 'V5 must explicitly require conservative pressure-response evidence.');
+assert(panel.includes('const allowPressure=!!existing&&new Set(ids).size>=2&&dev5PressureResponseIsClean(value)'), 'V5 runtime must reject pressure responses on NPC creation and require repeated evidence for updates.');
+assert(panel.includes('Never put physical tells or stage directions in pressureResponse'), 'V5 pressure response prompt must reject body-language contamination.');
+assert(panel.includes('THINKING-MODEL OUTPUT CONTRACT — mandatory'), 'V5 must harden extraction for reasoning/thinking models.');
+assert(panel.includes('Your FIRST character must be { and your LAST character must be }'), 'V5 must require a bare JSON object.');
+assert(panel.includes('Never write phrases such as "Let me analyze"'), 'V5 JSON repair must explicitly reject visible reasoning preambles.');
+assert(panel.includes('arcProposals. Missing categories must be empty arrays.'), 'V5 JSON repair schema must preserve arcProposals as the fifth array.');
+assert(panel.includes('after two repair attempts'), 'V5 must allow a second syntax-only repair before pausing automatic scans.');
+assert(panel.includes('DEV5_SCAN_MAX_FLOORS=16,DEV5_SCAN_MAX_CHARS=24000'), 'V5 must use smaller bounded extraction batches for thinking models.');
+
 console.log('StoryState NPC quality regression tests passed.');
