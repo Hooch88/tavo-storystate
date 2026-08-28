@@ -1,5 +1,13 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.4 — Structured voice hardening
+
+- Structured NPC Hints no longer define Communication/Speech fields.
+- Structured hint parsing ignores legacy `communication`, `voice`, and `speech` fields instead of persisting them.
+- Stable `communicationSignature` is now learned only by extraction with at least two evidence messages.
+- Extractor guidance requires repeated actual NPC dialogue evidence for a stable voice signature.
+- No schema, relationship, Knowledge, World Arc, scan cadence, or persistence-key changes.
+
 ## 0.8.0-dev.3 — NPC personality quality
 
 - Tightens NPC extraction semantics so Communication stores speech/voice rather than physical mannerisms.
