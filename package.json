@@ -1,11 +1,11 @@
 {
   "name": "tavo-storystate",
-  "version": "0.8.0-dev.4",
+  "version": "0.8.0-dev.5",
   "private": true,
   "scripts": {
     "build": "node scripts/build.cjs",
     "build:check": "node scripts/build.cjs --check",
-    "test": "node scripts/build.cjs --check && node tests/baseline-regression.test.cjs && node tests/state-model.test.cjs && node tests/context-injection.test.cjs && node tests/extraction.test.cjs && node tests/extraction-run.test.cjs && node tests/npc-quality.test.cjs",
+    "test": "node scripts/build.cjs && node tests/baseline-regression.test.cjs && node tests/state-model.test.cjs && node tests/context-injection.test.cjs && node tests/extraction.test.cjs && node tests/extraction-run.test.cjs && node tests/npc-quality.test.cjs",
     "check": "node --check entry.js && node scripts/build.cjs --check && node tests/baseline-regression.test.cjs && node tests/state-model.test.cjs && node tests/context-injection.test.cjs && node tests/extraction.test.cjs && node tests/extraction-run.test.cjs && node tests/npc-quality.test.cjs"
   }
 }
