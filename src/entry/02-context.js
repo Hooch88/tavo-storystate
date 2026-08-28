@@ -149,12 +149,11 @@ age: established age/range
 pronouns: established pronouns/gender
 aliases: comma-separated established aliases
 appearance: concise stable visual anchor
-communication: concise speech/voice signature only; no gestures, facial expressions, posture, eye behavior, hand movements, or recurring physical mannerisms
 motive: current concrete motive; omit if none is established
 [/SS:NPC]
 -->
 Tier must be MAJOR, SUPPORT, or MINOR. Omit unknown fields; never invent details merely to fill the block. Use MAJOR/SUPPORT only for recurring or important characters. MINOR is for one-scene/background named characters.
-Communication means how the NPC speaks: vocabulary, cadence, directness, formality, dialect, or genuinely recurring verbal habits. Do not encode body-language tics as communication. A single colorful gesture is scene behavior, not a stable personality trait.
+Speech/voice is learned by StoryState extraction from repeated dialogue evidence; do not include communication, voice, or speech fields in this hint. A single colorful behavior or line delivery is scene behavior, not a stable personality trait.
 For a meaningful relationship-relevant event you may additionally include [SS:REL|Name] concise evidence-based change [/SS:REL], but never assign relationship scores.
 Never place secrets, hidden knowledge, world truth, relationship scores, or protagonist feelings in these hints. Never create a hint for the protagonist/player, narrator, Simulation Master, or Tavo. StoryState consumes these hints locally; they are metadata, not narration.
 [[END_STORYSTATE_STRUCTURED_NPC_HINTS]]`;
