@@ -13,6 +13,17 @@ on:
       - 'tests/**'
       - 'package.json'
       - '.github/workflows/package-tpg.yml'
+  pull_request:
+    paths:
+      - 'manifest.json'
+      - 'entry.js'
+      - 'locales/**'
+      - 'ui/**'
+      - 'src/**'
+      - 'scripts/build.cjs'
+      - 'tests/**'
+      - 'package.json'
+      - '.github/workflows/package-tpg.yml'
   workflow_dispatch:
 
 permissions:
