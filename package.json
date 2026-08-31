@@ -1,6 +1,6 @@
 {
   "name": "tavo-storystate",
-  "version": "0.8.0-dev.9",
+  "version": "0.8.0-dev.10",
   "private": true,
   "scripts": {
     "build": "node scripts/build.cjs",
