@@ -1,6 +1,6 @@
 # Tavo StoryState
 
-**Current development baseline:** `0.8.0-dev.11`  
+**Current development baseline:** `0.8.0-dev.12`  
 **State schema:** 12  
 **Tavo plugin spec:** 2
 
@@ -20,6 +20,7 @@ StoryState 0.8 includes:
 - Home dashboard, NPC directory/detail pages, diagnostics, and initials-based avatar placeholders;
 - conservative batched assisted extraction plus manual **Scan Now**;
 - local **Recover NPCs** for recent already-consumed history with zero model calls and without moving the normal scan cursor;
+- separate **Enrich NPCs** for filling missing profile fields from relevant saved history using the normal scan model contract;
 - stale-scan ownership/lease protection and fail-closed malformed extraction handling;
 - model-only context injection through `generation:prepare`;
 - optional Structured NPC Hints and optional Pura adapter, both off by default;
@@ -32,7 +33,7 @@ StoryState 0.8 includes:
 
 StoryState owns persistent simulation state. It does **not** replace the narrator preset, campaign card, memory system, Lorebook, Visual Library, or Willforge.
 
-Basic recurring NPC identity no longer depends on successful model extraction. The local layer establishes only that a recurring named character exists. The model scan remains responsible for richer evidence-based enrichment such as role detail, personality, relationships, Knowledge, and World Arcs.
+Basic recurring NPC identity no longer depends on successful model extraction. The local layer establishes only that a recurring named character exists. The model scan and optional **Enrich NPCs** pass remain responsible for richer evidence-based profile detail. Enrichment is deliberately isolated from relationship, Knowledge, World Arc, and normal scan-cursor state.
 
 Manual corrections remain authoritative over older extracted evidence. Relationship axes are directional behavioral tendencies, not commands; attraction never implies consent or affection, and loyalty never implies obedience.
 
@@ -75,6 +76,7 @@ src/
       06e-local-npc-admission.js
       07-scan-runner.js
       07a-npc-backfill.js
+      07b-npc-enrichment.js
       08-io-bootstrap.js
       08a-local-npc-listener.js
 ```
@@ -101,7 +103,7 @@ Run the full regression suite:
 npm test
 ```
 
-The regression suite includes the original behavioral tests plus an audited extractor scenario based on recurring Dreg/Wrenna/Harl-style traveling companions, local fallback, zero-model recovery, and incremental saved-message identity admission.
+The regression suite includes the original behavioral tests plus audited scenarios for Dreg/Wrenna/Harl-style traveling companions, local fallback, zero-model recovery, incremental saved-message identity admission, targeted history enrichment, and provider-failure preservation.
 
 ## Packaging
 
@@ -109,15 +111,6 @@ The `.tpg` is a ZIP-format archive whose root must contain `manifest.json`. GitH
 
 ## Release safety
 
-`0.8.0-dev.11` keeps schema 12 and UI vNext, but separates **NPC identity** from **model enrichment**. A recurring named character can be admitted locally from repeated evidence even if the provider rejects a plugin generation request or the extractor returns unusable output. `Recover NPCs` is entirely local and cannot change relationships, Knowledge, World Arcs, or the normal scan cursor.
+`0.8.0-dev.12` keeps schema 12 and UI vNext, preserves model-independent NPC recovery, and adds a separate best-effort history-enrichment pass for sparse NPC profiles. `Recover NPCs` can never be blocked by the model/provider. `Enrich NPCs` may use the provider, but if that request fails the recovered identities, existing profile data, relationships, Knowledge, World Arcs, and normal scan cursor remain unchanged.
 
 Before testing a development build on a valued campaign, export StoryState first. Keep the last known-good `.tpg` available for rollback.
-
-## Documentation
-
-- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — current release notes
-- [`docs/REFACTORING.md`](docs/REFACTORING.md) — maintenance-refactor rules and module boundaries
-- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) — original project plan and historical direction
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture notes
-- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — state model notes
-- [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md) — test strategy
