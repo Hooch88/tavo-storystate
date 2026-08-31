@@ -1,5 +1,13 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.9 — Copy diagnostics
+
+- Adds a **Copy Diagnostics** action to StoryState diagnostics as a lightweight alternative to exporting the full StoryState JSON.
+- Copies the currently rendered diagnostic log exactly as shown in the panel.
+- Uses the system clipboard when available with a textarea fallback for older WebViews.
+- Shows a toast when diagnostics are copied, when none are available, or when clipboard access fails.
+- No schema, extraction, scan cadence, NPC backfill, relationship, Knowledge, World Arc, or persistence changes.
+
 ## 0.8.0-dev.8 — Extraction recovery and NPC backfill
 
 - Fixes a fresh-story scan failure where malformed extractor output could be repaired into empty proposal arrays, accepted as a successful scan, and permanently advance the scan cursor past recurring NPCs.
