@@ -1,5 +1,18 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.11 — Local NPC identity admission
+
+- Removes the model/provider dependency from **Recover NPCs**. Recovery now analyzes recent saved story text locally and makes zero `tavo.generate` calls.
+- Adds conservative deterministic NPC admission from repeated named-character action evidence. Two strong saved appearances can establish a recurring NPC identity without waiting for an extraction scan.
+- Registers a saved-message listener so future recurring NPC identities can be admitted incrementally as the story progresses.
+- Keeps the model extractor for enrichment: role details, personality, relationships, Knowledge, and World Arcs still use the normal evidence-based scan path.
+- Normal scans now use local identity admission as a fallback after applying model proposals. If the model returns valid JSON but omits an obvious recurring NPC, StoryState can still create the minimal NPC identity instead of silently losing it.
+- Candidate evidence is persisted before the model request, so malformed model output cannot erase the recurring-character evidence gathered from that batch.
+- JSON repair now uses the same nonzero `temperature: 0.1` convention as the proven normal scan request instead of a special `temperature: 0` override.
+- **Recover NPCs** preserves relationships, Knowledge, World Arcs, and `lastScannedFloor` / `lastScannedMessageId`; it also clears only stale recovery-specific error state, not unrelated scan errors.
+- Regression coverage now requires zero generation calls during NPC recovery, local fallback after a valid-empty model result, and incremental two-message NPC admission without a model call.
+- UI vNext, Copy Diagnostics, schema 12, relationship semantics, Knowledge semantics, World Arc semantics, and existing StoryState data remain unchanged.
+
 ## 0.8.0-dev.10 — Audited identity-first extraction
 
 - Audits StoryState extraction from the verified modular `0.8.0-dev.2` baseline through the NPC-quality and thinking-model hardening changes, with the UI vNext layer evaluated separately.
