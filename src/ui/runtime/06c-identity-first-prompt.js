@@ -10,7 +10,7 @@
     }
   }
   buildExtractionPrompt=function(state,messages,chatInfo={}){
-    const reserved=auditedReservedNames(chatInfo),currentCandidates=collectAuditedNpcCandidates(messages,reserved),candidateHints=combinedNpcCandidateHints(state,currentCandidates).map(c=>({name:c.name,evidenceMessageIds:c.evidence.map(e=>e.id),current:c.current,personEvidence:c.personCount,companionEvidence:c.companionCount,qualifiesAsRecurring:c.strong,mayBeObviousCompanion:c.obvious,priorEvidence:c.evidence.filter(e=>!c.currentIds?.has?.(e.id)).slice(-2).map(e=>({id:e.id,text:e.text}))})),snapshot=compactExtractionState(state,messages),axes=relationshipAxesForConfig(state.config),story=messages.map(m=>`[${m.id}] ${String(m.role||"").toUpperCase()}: ${m.content}`).join("\n\n");
+    const reserved=auditedReservedNames(chatInfo),currentCandidates=collectAuditedNpcCandidates(messages,reserved);mergeNpcCandidateLedger(state,currentCandidates);const candidateHints=combinedNpcCandidateHints(state,currentCandidates).map(c=>({name:c.name,evidenceMessageIds:c.evidence.map(e=>e.id),current:c.current,personEvidence:c.personCount,companionEvidence:c.companionCount,qualifiesAsRecurring:c.strong,mayBeObviousCompanion:c.obvious,priorEvidence:c.evidence.filter(e=>!c.currentIds?.has?.(e.id)).slice(-2).map(e=>({id:e.id,text:e.text}))})),snapshot=compactExtractionState(state,messages),axes=relationshipAxesForConfig(state.config),story=messages.map(m=>`[${m.id}] ${String(m.role||"").toUpperCase()}: ${m.content}`).join("\n\n");
     return `You are StoryState's evidence-based state extractor. Analyze only the supplied saved messages. Do not continue the story. Return one valid JSON object, with no prose, reasoning, markdown, or code fence. Your first character must be { and your last character must be }.
 
 PRIORITY ORDER:
@@ -51,7 +51,7 @@ Use empty arrays for categories with no meaningful delta.`;
     try{return {proposals:parseExtractionResponse(raw),repaired:false}}
     catch(firstError){
       if(typeof onRepair==="function")onRepair();
-      const repairedRaw=await withTimeout(tavo.generate(buildExtractionRepairPrompt(raw),{context:false,settings:{temperature:0,maxCompletionTokens:2200}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),"JSON repair");
+      const repairedRaw=await withTimeout(tavo.generate(buildExtractionRepairPrompt(raw),{context:false,settings:{temperature:0.1,maxCompletionTokens:2200}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),"JSON repair");
       try{
         const proposals=parseExtractionResponse(repairedRaw);
         if(extractionProposalCount(proposals)===0){const err=new Error("Extractor JSON required repair, but the repaired response contained no proposals. The scan cursor was not advanced so this batch can be retried safely.");err.rawPreview=text(raw,900);err.repairedPreview=text(repairedRaw,900);err.repairedEmpty=true;throw err}
