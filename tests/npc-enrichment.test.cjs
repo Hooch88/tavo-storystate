@@ -114,7 +114,7 @@ vm.runInNewContext(scripts.at(-1)[1], context, { filename: 'ui/panel.html' });
   assert.strictEqual(generateCalls.length, 2, 'A second enrichment attempt may contact the provider once.');
   assert.strictEqual(JSON.stringify(enriched.npcs), snapshot, 'Provider failure must preserve recovered/enriched NPC profiles.');
   assert.deepStrictEqual([enriched.meta.lastScannedFloor, enriched.meta.lastScannedMessageId], cursor, 'Provider failure must preserve the normal scan cursor.');
-  assert(enriched.diagnostics.some(d => /NPC enrichment failed: simulated provider failure/.test(d.message)), 'Provider failure should be visible in diagnostics.');
+  assert(enriched.diagnostics.some(d => /NPC enrichment failed: simulated provider failure/.test(d.text)), 'Provider failure should be visible in diagnostics.');
 
   console.log('StoryState recovered-NPC enrichment tests passed.');
 })().catch((error) => { console.error(error); process.exit(1); });
