@@ -1,5 +1,16 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.6 — UI vNext preview
+
+- Rebuilds the StoryState panel around a mobile-first dark interface inspired by the approved UI direction.
+- Character cards are now compact full-width mobile rows with prominent circular avatar slots, names, roles, residence chips, pin state, and clearer tap affordance.
+- NPC avatars default to initials generated from the NPC name; no image is required and no avatar data is added to StoryState schema 12.
+- Character, relationship, knowledge, world-arc, activity, and settings views receive a consistent card, spacing, typography, navigation, and status treatment.
+- NPC, relationship, knowledge, arc, and session-handoff editors now open as focused overlay sheets instead of expanding into the list beneath them.
+- Settings accordions, relationship bars, knowledge sensitivity states, world-arc urgency states, activity history, search/toolbars, and the bottom navigation were visually refined for mobile use.
+- Existing extraction, scan cadence, context injection, StoryState persistence keys, relationship semantics, knowledge semantics, world-arc behavior, and schema remain unchanged.
+- Portrait/image assignment is intentionally not implemented in this preview. The initials slot is designed so a future optional Visual Library image can replace it without changing card layout.
+
 ## 0.8.0-dev.4 — Structured voice hardening
 
 - Structured NPC Hints no longer define Communication/Speech fields.
