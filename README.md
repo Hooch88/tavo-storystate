@@ -1,6 +1,6 @@
 # Tavo StoryState
 
-**Current development baseline:** `0.8.0-dev.10`  
+**Current development baseline:** `0.8.0-dev.11`  
 **State schema:** 12  
 **Tavo plugin spec:** 2
 
@@ -11,14 +11,16 @@ StoryState is a persistent simulation-state plugin for long-running Tavo role-pl
 StoryState 0.8 includes:
 
 - canonical NPC identity, aliases, stable characterization anchors, residence, motives, and manual overrides;
-- identity-first NPC extraction with cross-batch candidate evidence for recurring characters;
+- conservative **local NPC identity admission** from repeated saved-story evidence, independent of the chat model/provider;
+- identity-first model extraction for NPC enrichment and broader state updates;
+- cross-batch candidate evidence for recurring characters;
 - directional NPC → protagonist and NPC → NPC relationships with configurable axes;
 - consequential Knowledge & Secrets with directional NPC knowledge states;
 - finite World Arcs with active/dormant/resolved lifecycle and manual director nudges;
 - Home dashboard, NPC directory/detail pages, diagnostics, and initials-based avatar placeholders;
 - conservative batched assisted extraction plus manual **Scan Now**;
-- safe **Recover NPCs** for recent already-consumed history without moving the normal scan cursor;
-- stale-scan ownership/lease protection and fail-closed malformed/empty extraction handling;
+- local **Recover NPCs** for recent already-consumed history with zero model calls and without moving the normal scan cursor;
+- stale-scan ownership/lease protection and fail-closed malformed extraction handling;
 - model-only context injection through `generation:prepare`;
 - optional Structured NPC Hints and optional Pura adapter, both off by default;
 - campaign/session handoff between fresh chats;
@@ -29,6 +31,8 @@ StoryState 0.8 includes:
 ## Runtime boundaries
 
 StoryState owns persistent simulation state. It does **not** replace the narrator preset, campaign card, memory system, Lorebook, Visual Library, or Willforge.
+
+Basic recurring NPC identity no longer depends on successful model extraction. The local layer establishes only that a recurring named character exists. The model scan remains responsible for richer evidence-based enrichment such as role detail, personality, relationships, Knowledge, and World Arcs.
 
 Manual corrections remain authoritative over older extracted evidence. Relationship axes are directional behavioral tendencies, not commands; attraction never implies consent or affection, and loyalty never implies obedience.
 
@@ -68,9 +72,11 @@ src/
       06b-npc-candidate-ledger.js
       06c-identity-first-prompt.js
       06d-audited-scan-guard.js
+      06e-local-npc-admission.js
       07-scan-runner.js
       07a-npc-backfill.js
       08-io-bootstrap.js
+      08a-local-npc-listener.js
 ```
 
 This keeps Tavo's runtime package simple while making development safer and easier to review.
@@ -95,7 +101,7 @@ Run the full regression suite:
 npm test
 ```
 
-The regression suite includes the original behavioral tests plus an audited extractor scenario based on recurring Dreg/Wrenna/Harl-style traveling companions.
+The regression suite includes the original behavioral tests plus an audited extractor scenario based on recurring Dreg/Wrenna/Harl-style traveling companions, local fallback, zero-model recovery, and incremental saved-message identity admission.
 
 ## Packaging
 
@@ -103,7 +109,7 @@ The `.tpg` is a ZIP-format archive whose root must contain `manifest.json`. GitH
 
 ## Release safety
 
-`0.8.0-dev.10` keeps schema 12 and the UI vNext presentation, but replaces the overloaded dev.5 extraction prompt with a smaller identity-first pipeline. New NPC identity is prioritized before optional enrichment, recurring evidence survives bounded batches, and suspicious empty results do not consume the scan cursor.
+`0.8.0-dev.11` keeps schema 12 and UI vNext, but separates **NPC identity** from **model enrichment**. A recurring named character can be admitted locally from repeated evidence even if the provider rejects a plugin generation request or the extractor returns unusable output. `Recover NPCs` is entirely local and cannot change relationships, Knowledge, World Arcs, or the normal scan cursor.
 
 Before testing a development build on a valued campaign, export StoryState first. Keep the last known-good `.tpg` available for rollback.
 
