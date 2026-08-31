@@ -1,5 +1,16 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.8 — Extraction recovery and NPC backfill
+
+- Fixes a fresh-story scan failure where malformed extractor output could be repaired into empty proposal arrays, accepted as a successful scan, and permanently advance the scan cursor past recurring NPCs.
+- A repaired extractor response containing zero proposals now fails closed: StoryState records an error, pauses automatic retries, preserves existing state, and leaves `lastScannedFloor` / `lastScannedMessageId` unchanged so the same batch can be retried safely.
+- Corrects the JSON repair contract from four arrays to all five live extractor arrays: NPCs, relationships, information, NPC knowledge, and World Arcs.
+- Adds a **Backfill NPCs** recovery action beside Scan Now. It re-checks the most recent bounded story history for missed recurring/important NPCs using one focused extraction request.
+- NPC backfill is intentionally narrow: only NPC create/update proposals are applied. Relationships, Knowledge, World Arcs, normal scan cadence, and the normal scan cursor are left untouched.
+- Backfill guidance explicitly recognizes clearly established traveling companions, escape companions, party members, roommates, coworkers, and similarly persistent companions as obvious recurring/supporting NPCs when the story strongly establishes that role.
+- Adds regression coverage for repaired-empty scans and for recovering Dreg/Harl/Wrenna-style recurring companions from already-consumed recent history without altering other StoryState collections.
+- Schema remains 12; no persistence-key migration is required.
+
 ## 0.8.0-dev.7 — Structural UI vNext rebuild
 
 - Replaces the prior skin-only preview with the actual new StoryState information architecture.
