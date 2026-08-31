@@ -1,5 +1,19 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.12 — Recovered NPC profile enrichment
+
+- Keeps **Recover NPCs** fully local and model-independent. Recovery still makes zero `tavo.generate` calls and remains the reliable identity-repair path.
+- Adds a separate **Enrich NPCs** action beside Recover NPCs for sparse/recovered profiles that already exist in StoryState.
+- Enrichment re-reads only recent saved history relevant to the target NPCs and uses the exact normal StoryState generation contract: `context:false`, `temperature:0.1`, and `maxCompletionTokens:5000`.
+- Enrichment can fill evidence-supported blank NPC fields only: role, age, pronouns, explicit residence, appearance anchor, communication signature, pressure response, core value, current motive, and contradiction.
+- Existing non-empty fields and manual corrections are never overwritten by this enrichment pass.
+- Enrichment is NPC-profile-only. Relationship, Knowledge, and World Arc proposals are discarded even if the model emits them.
+- The normal scan cursor (`lastScannedFloor` / `lastScannedMessageId`) is never changed by enrichment.
+- Provider/model failure during enrichment is non-destructive: recovered identities and any existing profile data remain intact, StoryState stays usable, and diagnostics record the enrichment failure separately.
+- Relevant history is bounded to at most 12 selected messages / 18,000 characters so enrichment does not recreate the oversized all-in-one extractor problem.
+- Adds regression coverage proving successful recovered-profile enrichment uses one normal-contract model request, ignores non-NPC proposals, preserves the scan cursor, and preserves recovered profile data if the provider later fails.
+- UI vNext, Copy Diagnostics, local NPC admission, schema 12, relationships, Knowledge, World Arcs, and existing StoryState data remain unchanged.
+
 ## 0.8.0-dev.11 — Local NPC identity admission
 
 - Removes the model/provider dependency from **Recover NPCs**. Recovery now analyzes recent saved story text locally and makes zero `tavo.generate` calls.
