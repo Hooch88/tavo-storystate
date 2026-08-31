@@ -1,6 +1,6 @@
 # Tavo StoryState
 
-**Current development baseline:** `0.8.0-dev.4`  
+**Current development baseline:** `0.8.0-dev.10`  
 **State schema:** 12  
 **Tavo plugin spec:** 2
 
@@ -11,18 +11,20 @@ StoryState is a persistent simulation-state plugin for long-running Tavo role-pl
 StoryState 0.8 includes:
 
 - canonical NPC identity, aliases, stable characterization anchors, residence, motives, and manual overrides;
+- identity-first NPC extraction with cross-batch candidate evidence for recurring characters;
 - directional NPC → protagonist and NPC → NPC relationships with configurable axes;
 - consequential Knowledge & Secrets with directional NPC knowledge states;
 - finite World Arcs with active/dormant/resolved lifecycle and manual director nudges;
-- Activity and Diagnostics views;
+- Home dashboard, NPC directory/detail pages, diagnostics, and initials-based avatar placeholders;
 - conservative batched assisted extraction plus manual **Scan Now**;
-- stale-scan ownership/lease protection and recovery;
+- safe **Recover NPCs** for recent already-consumed history without moving the normal scan cursor;
+- stale-scan ownership/lease protection and fail-closed malformed/empty extraction handling;
 - model-only context injection through `generation:prepare`;
 - optional Structured NPC Hints and optional Pura adapter, both off by default;
 - campaign/session handoff between fresh chats;
 - recovery snapshots and Living World import;
-- native Tavo JSON import/export on current Tavo builds;
-- mobile-first six-tab UI: Characters, Relations, Knowledge, World, Activity, Settings.
+- native Tavo JSON import/export and direct **Copy Diagnostics**;
+- mobile-first UI vNext: Home, NPCs, Relations, Knowledge, World, Settings.
 
 ## Runtime boundaries
 
@@ -56,15 +58,22 @@ src/
     runtime/
       01-state.js
       02-rendering-editors.js
+      02a-ui-vnext.js
+      02b-diagnostics-copy.js
       03-scan-controls-handoff.js
       04-extraction-parser.js
       05-npc-hint-adapters.js
       06-proposal-application.js
+      06a-extractor-hardening.js
+      06b-npc-candidate-ledger.js
+      06c-identity-first-prompt.js
+      06d-audited-scan-guard.js
       07-scan-runner.js
+      07a-npc-backfill.js
       08-io-bootstrap.js
 ```
 
-This keeps Tavo's runtime package unchanged while making development safer and easier to review.
+This keeps Tavo's runtime package simple while making development safer and easier to review.
 
 ## Development
 
@@ -86,15 +95,15 @@ Run the full regression suite:
 npm test
 ```
 
-The build-parity check is intentional: a pure maintenance refactor must be able to reproduce the known-good runtime artifact exactly unless a release deliberately changes behavior.
+The regression suite includes the original behavioral tests plus an audited extractor scenario based on recurring Dreg/Wrenna/Harl-style traveling companions.
 
 ## Packaging
 
-The `.tpg` is a ZIP-format archive whose root must contain `manifest.json`. GitHub Actions validates the build and packages the runtime files.
+The `.tpg` is a ZIP-format archive whose root must contain `manifest.json`. GitHub Actions builds from modular source, runs the full regression suite, validates manifest/package version parity, and packages the runtime files.
 
 ## Release safety
 
-`0.8.0-dev.4` builds on the verified Tavo 1.2.7 file-API baseline. It intentionally changes only NPC extraction/injection semantics for personality quality; scan scheduling, schema 12, persistence keys, relationships, Knowledge, and World Arc behavior are unchanged.
+`0.8.0-dev.10` keeps schema 12 and the UI vNext presentation, but replaces the overloaded dev.5 extraction prompt with a smaller identity-first pipeline. New NPC identity is prioritized before optional enrichment, recurring evidence survives bounded batches, and suspicious empty results do not consume the scan cursor.
 
 Before testing a development build on a valued campaign, export StoryState first. Keep the last known-good `.tpg` available for rollback.
 
