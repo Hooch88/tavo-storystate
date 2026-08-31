@@ -1,5 +1,17 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.7 — Structural UI vNext rebuild
+
+- Replaces the prior skin-only preview with the actual new StoryState information architecture.
+- StoryState now opens to a **Home / Session State** dashboard rather than directly to the character roster.
+- The dashboard contains live metric tiles, current campaign and scan state, Scan/Add NPC/Export/New Session quick actions, recent StoryState changes, and pinned characters.
+- Bottom navigation is now **Home / NPCs / Relations / Knowledge / World / Settings**. The previous standalone Activity page is retained internally only for compatibility; recent activity is surfaced on Home.
+- The NPC directory gains a dedicated screen header, search, All/Pinned/Active/Archived filters, richer character rows, motive preview, residence and updated-time chips, and initials-based avatars.
+- Tapping an NPC opens a read-first profile view with identity metadata, stable character fields, current motive, connected relationships, relationship axes, and directional knowledge. Editing is a secondary action from the profile.
+- Initials remain the default avatar placeholder. No portrait dependency or avatar field was added to schema 12.
+- The UI vNext implementation is isolated to a runtime presentation module. Existing StoryState persistence, extraction, scan cadence, context injection, relationship semantics, Knowledge semantics, World Arc semantics, and schema remain unchanged.
+- The header carries a visible **UI vNext** badge so testers can immediately distinguish this package from the earlier skin-only preview.
+
 ## 0.8.0-dev.6 — UI vNext preview
 
 - Rebuilds the StoryState panel around a mobile-first dark interface inspired by the approved UI direction.
