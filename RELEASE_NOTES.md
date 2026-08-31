@@ -1,5 +1,19 @@
 # StoryState Release Notes
 
+## 0.8.0-dev.10 — Audited identity-first extraction
+
+- Audits StoryState extraction from the verified modular `0.8.0-dev.2` baseline through the NPC-quality and thinking-model hardening changes, with the UI vNext layer evaluated separately.
+- Confirms UI vNext does not build extractor prompts, call the model, parse model output, or apply StoryState proposals; the scan regression came from the increasingly large all-in-one extractor prompt and repair path.
+- Replaces the active dev.5 prompt overlay with a compact **NPC identity first** extractor. Eligible recurring or clearly important NPCs must be emitted before optional personality, relationship, Knowledge, or World Arc detail.
+- New NPC creation is intentionally light: role, age, pronouns, explicit residence, appearance anchor, and current motive only. Communication signature, pressure response, core value, and contradiction are learned later for already tracked NPCs when repeated evidence supports them.
+- Reduces a normal extraction batch to at most 8 saved-message floors and 12,000 story characters, while preserving the existing bounded backlog behavior.
+- Adds a chat-scoped candidate ledger outside schema 12 so evidence for recurring NPCs survives across bounded scan batches. A later appearance can combine with a preserved earlier appearance instead of falling through forever.
+- A syntactically valid but empty extractor result now also fails closed when local evidence shows a strong recurring NPC candidate. The normal scan cursor is not advanced.
+- Replaces the earlier Backfill flow with **Recover NPCs**, a single compact identity-only recovery request for recent already-consumed history. It cannot modify relationships, Knowledge, World Arcs, or the normal scan cursor.
+- Keeps one bounded JSON syntax repair attempt. Repaired-empty output remains an error rather than a successful empty scan.
+- Adds a six-gate regression audit covering Dreg/Wrenna/Harl-style companion detection, prompt-size limits, cross-batch evidence, empty-result protection, normal one-request admission, and safe one-request recovery.
+- Keeps UI vNext, Copy Diagnostics, schema 12, existing persistence keys, relationship semantics, Knowledge semantics, and World Arc semantics unchanged.
+
 ## 0.8.0-dev.9 — Copy diagnostics
 
 - Adds a **Copy Diagnostics** action to StoryState diagnostics as a lightweight alternative to exporting the full StoryState JSON.
