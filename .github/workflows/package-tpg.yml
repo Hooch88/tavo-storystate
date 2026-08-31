@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   package:
@@ -26,9 +26,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Modular source and all current schema-12 regressions, including scan integration, must pass before packaging.
       - name: Verify modular source and regression suite
         run: npm test
+      - name: Sync generated UI artifact on preview branch
+        if: github.ref == 'refs/heads/feature/ui-vnext-rebuild'
+        shell: bash
+        run: |
+          if git diff --quiet -- entry.js ui/panel.html; then
+            echo "Generated artifacts already match source."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add entry.js ui/panel.html
+            git commit -m "build: sync StoryState structural UI artifacts"
+            git push
+          fi
       - name: Read plugin version
         id: version
         shell: bash
