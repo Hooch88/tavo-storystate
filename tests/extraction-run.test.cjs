@@ -6,7 +6,7 @@ const assert = require('assert');
 function dummyElement() {
   const element = {
     hidden: true, value: '', checked: false, disabled: false, innerHTML: '', textContent: '',
-    dataset: {}, style: {}, files: [],
+    dataset: {}, style: {}, files: [], parentElement: null,
     classList: { toggle() {}, add() {}, remove() {} }, addEventListener() {}, removeEventListener() {},
     scrollIntoView() {}, appendChild() {}, remove() {}, click() {}, reset() {}, closest() { return null; }
   };
@@ -24,6 +24,15 @@ let messages = [
 ];
 let generateCalls = [];
 let generateMode = 'success';
+const emptyExtraction = () => ({ npcProposals: [], relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: [] });
+const companionExtraction = () => ({
+  npcProposals: [
+    { action: 'create', name: 'Dreg', admissionReason: 'recurring', evidenceMessageIds: [301, 304], fields: { role: 'Escape companion', currentMotive: 'Reach safety with the group' } },
+    { action: 'create', name: 'Harl', admissionReason: 'recurring', evidenceMessageIds: [302, 305], fields: { role: 'Traveling companion', currentMotive: 'Guide the group toward safety' } },
+    { action: 'create', name: 'Wrenna', admissionReason: 'recurring', evidenceMessageIds: [303, 306], fields: { role: 'Traveling companion', currentMotive: 'Stay alive and reach safety' } }
+  ],
+  relationshipProposals: [], informationProposals: [], knowledgeProposals: [], arcProposals: []
+});
 const tavo = {
   get(key) { return vars.has(key) ? vars.get(key) : null; },
   set(key, value) { vars.set(key, value); },
@@ -40,6 +49,11 @@ const tavo = {
   async generate(prompt, options) {
     generateCalls.push({ prompt, options });
     if (generateMode === 'fail') throw new Error('simulated extractor failure');
+    if (generateMode === 'repair-empty') {
+      if (/Repair the following StoryState extractor output/.test(prompt)) return JSON.stringify(emptyExtraction());
+      return '{"npcProposals": [';
+    }
+    if (generateMode === 'companions') return JSON.stringify(companionExtraction());
     return JSON.stringify({
       npcProposals: [{
         action: 'create', name: 'Mara Bell', admissionReason: 'recurring', evidenceMessageIds: [101, 103],
@@ -99,6 +113,57 @@ vm.runInNewContext(scripts.at(-1)[1], context, { filename: 'ui/panel.html' });
   assert.strictEqual(failed.relationships.length, 1, 'Extractor failure must not delete previously committed relationship state.');
   assert.strictEqual(failed.meta.scanStatus, 'error');
   assert(/simulated extractor failure/.test(failed.meta.lastScanSummary));
+
+  // Regression: malformed output repaired into empty arrays must NOT consume the scan batch.
+  messages = [
+    { id: 201, role: 'assistant', hidden: false, content: 'Dreg watches the camp while Wrenna whispers to Dakota.' },
+    { id: 202, role: 'assistant', hidden: false, content: 'Dreg returns with Wrenna and prepares to travel with Dakota.' }
+  ];
+  vars.delete('storyState.scanRequest');
+  vars.delete('storyState.scanProgress');
+  const repairedState = harness.newState();
+  repairedState.config.updateMode = 'assisted';
+  vars.set('storyState.state', repairedState);
+  generateMode = 'repair-empty';
+  const repairCallsBefore = generateCalls.length;
+  await harness.runExtractionScan({ type: 'scan', mode: 'manual' });
+  const repairedEmpty = harness.normalizeState(vars.get('storyState.state'));
+  assert.strictEqual(generateCalls.length - repairCallsBefore, 2, 'Malformed extraction should use exactly one bounded repair call.');
+  assert.strictEqual(repairedEmpty.meta.scanStatus, 'error', 'Repaired-empty extraction must pause instead of being accepted.');
+  assert.strictEqual(repairedEmpty.meta.lastScannedFloor, null, 'Repaired-empty extraction must not advance the scan floor.');
+  assert.strictEqual(repairedEmpty.meta.lastScannedMessageId, null, 'Repaired-empty extraction must not advance the message cursor.');
+  assert(/repaired response contained no proposals/i.test(repairedEmpty.meta.lastScanSummary));
+
+  // Regression based on the fresh Faerun story: NPC recovery is fully local and can recover
+  // recurring companions from consumed history without calling the model or touching other state.
+  messages = [
+    { id: 301, role: 'assistant', hidden: false, content: 'Dreg answers Dakota and stays close as the captives plan their escape.' },
+    { id: 302, role: 'assistant', hidden: false, content: 'Harl takes the lead down the slope and tells the fugitives where to step.' },
+    { id: 303, role: 'assistant', hidden: false, content: 'Wrenna follows Dakota and Dreg into the trees.' },
+    { id: 304, role: 'assistant', hidden: false, content: 'Dreg travels with the group toward safety.' },
+    { id: 305, role: 'assistant', hidden: false, content: 'Harl keeps guiding the four fugitives along the road.' },
+    { id: 306, role: 'assistant', hidden: false, content: 'Wrenna stays with Dreg and Harl as the fugitives make camp together.' }
+  ];
+  vars.delete('storyState.scanRequest');
+  vars.delete('storyState.scanProgress');
+  const consumed = harness.newState();
+  consumed.meta.lastScannedFloor = 5;
+  consumed.meta.lastScannedMessageId = 306;
+  consumed.meta.lastScanAt = new Date().toISOString();
+  consumed.knowledgeItems.push(harness.normalizeKnowledgeItem({ statement: 'Dakota is from another world.', truth: 'UNKNOWN', sensitivity: 'PRIVATE', updatedBy: 'manual' }));
+  vars.set('storyState.state', consumed);
+  const backfillCallsBefore = generateCalls.length;
+  await harness.runNpcBackfill();
+  const backfilled = harness.normalizeState(vars.get('storyState.state'));
+  assert.strictEqual(generateCalls.length - backfillCallsBefore, 0, 'NPC recovery must never call the model.');
+  assert.deepStrictEqual(Array.from(backfilled.npcs.map((npc) => npc.name).sort()), ['Dreg', 'Harl', 'Wrenna']);
+  assert.strictEqual(backfilled.meta.lastScannedFloor, 5, 'NPC recovery must preserve the normal scan floor.');
+  assert.strictEqual(backfilled.meta.lastScannedMessageId, 306, 'NPC recovery must preserve the normal message cursor.');
+  assert.strictEqual(backfilled.relationships.length, 0, 'NPC recovery must not create relationships.');
+  assert.strictEqual(backfilled.knowledgeItems.length, 1, 'NPC recovery must not alter knowledge.');
+  assert.strictEqual(backfilled.arcs.length, 0, 'NPC recovery must not create arcs.');
+  assert(/No model request was used/.test(backfilled.meta.lastScanSummary));
+  assert(/Normal scan cursor unchanged/.test(backfilled.meta.lastScanSummary));
 
   console.log('StoryState Phase 2 extraction-run integration tests passed.');
 })().catch((error) => {

@@ -27,22 +27,42 @@
   };
 
   buildExtractionRepairPrompt=function(raw){
-    return `You are a JSON syntax repair tool for StoryState. Repair only the supplied extractor output; do not analyze the story again and do not invent proposals. Preserve complete proposals that are actually present. If material is truncated, discard incomplete trailing proposals.\n\nSTRICT OUTPUT CONTRACT:\n- Your FIRST character must be { and your LAST character must be }.\n- Return exactly one valid JSON object.\n- No reasoning, preamble, explanation, markdown, code fences, comments, or text after the object.\n- Never write phrases such as "Let me analyze" or "Let me work through".\n- Never use placeholders such as [...], {...}, ellipses, or pseudo-JSON. Use [] or {} when content is unavailable.\n- Use standard double-quoted JSON keys and strings.\n- The object must contain exactly these five top-level array keys: npcProposals, relationshipProposals, informationProposals, knowledgeProposals, arcProposals. Missing categories must be empty arrays.\n\nMALFORMED EXTRACTOR OUTPUT:\n${text(raw,18000)}`;
+    return `You are a JSON syntax repair tool for StoryState. Repair the following StoryState extractor output only; do not analyze the story again and do not invent proposals. Preserve complete proposals that are actually present. If material is truncated, discard incomplete trailing proposals.\n\nSTRICT OUTPUT CONTRACT:\n- Your FIRST character must be { and your LAST character must be }.\n- Return exactly one valid JSON object.\n- No reasoning, preamble, explanation, markdown, code fences, comments, or text after the object.\n- Never write phrases such as "Let me analyze" or "Let me work through".\n- Never use placeholders such as [...], {...}, ellipses, or pseudo-JSON. Use [] or {} when content is unavailable.\n- Use standard double-quoted JSON keys and strings.\n- The object must contain exactly these five top-level array keys: npcProposals, relationshipProposals, informationProposals, knowledgeProposals, arcProposals. Missing categories must be empty arrays.\n\nMALFORMED EXTRACTOR OUTPUT:\n${text(raw,18000)}`;
   };
+
+  function dev8RejectEmptyRepair(proposals,raw,repairedRaw){
+    if(extractionProposalCount(proposals)>0)return proposals;
+    const err=new Error("Extractor JSON required repair, but the repaired response contained no proposals. The scan cursor was not advanced so this batch can be retried safely.");
+    err.rawPreview=text(raw,900);
+    err.repairedPreview=text(repairedRaw,900);
+    err.repairedEmpty=true;
+    throw err;
+  }
 
   parseExtractionWithOneRepair=async function(raw,onRepair=null){
     try{return {proposals:parseExtractionResponse(raw),repaired:false}}
     catch(firstError){
       if(typeof onRepair==="function")onRepair();
       const firstRepairPrompt=buildExtractionRepairPrompt(raw),firstRepairedRaw=await withTimeout(tavo.generate(firstRepairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:6000}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,120000),"JSON repair");
-      try{return {proposals:parseExtractionResponse(firstRepairedRaw),repaired:true}}
+      try{
+        const proposals=dev8RejectEmptyRepair(parseExtractionResponse(firstRepairedRaw),raw,firstRepairedRaw);
+        return {proposals,repaired:true};
+      }
       catch(secondError){
+        // A syntactically valid repair that lost every proposal is not a syntax failure. Retrying
+        // the empty repair would only risk consuming the batch, so fail closed immediately.
+        if(secondError?.repairedEmpty)throw secondError;
         if(typeof onRepair==="function")onRepair();
         const secondRepairPrompt=buildExtractionRepairPrompt(firstRepairedRaw),secondRepairedRaw=await withTimeout(tavo.generate(secondRepairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:6000}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),"JSON repair retry");
-        try{return {proposals:parseExtractionResponse(secondRepairedRaw),repaired:true}}
+        try{
+          const proposals=dev8RejectEmptyRepair(parseExtractionResponse(secondRepairedRaw),raw,secondRepairedRaw);
+          return {proposals,repaired:true};
+        }
         catch(thirdError){
+          if(thirdError?.repairedEmpty)throw thirdError;
           const err=new Error(`Extractor response was not usable JSON after two repair attempts. ${text(thirdError?.message||secondError?.message||firstError?.message||"",180)}`);
           err.rawPreview=text(raw,900);
+          err.repairedPreview=text(secondRepairedRaw,900);
           throw err;
         }
       }
