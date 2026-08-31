@@ -148,8 +148,8 @@ function clearRuntimeKeys() {
   assert.strictEqual(ledgerState.npcs[0].name, 'Dreg');
   assert.strictEqual(harness.loadNpcCandidateLedger(ledgerState).items.some((item) => item.name === 'Dreg'), false, 'Promoted NPC must be purged from the candidate ledger.');
 
-  // Audit gate 4: a valid-but-empty extractor result cannot silently consume a batch that
-  // contains a strong recurring NPC candidate.
+  // Audit gate 4: a syntactically valid empty model result still admits a strong recurring
+  // identity locally instead of consuming the batch with no NPC state.
   clearRuntimeKeys();
   messages = [
     { id: 571, role: 'assistant', hidden: false, content: 'Dreg answers Hooch and helps plan the escape.' },
@@ -160,12 +160,13 @@ function clearRuntimeKeys() {
   vars.set('storyState.state', emptyState);
   generateHandler = async () => JSON.stringify(emptyResult());
   await harness.runExtractionScan({ type: 'scan', mode: 'manual' });
-  const rejectedEmpty = harness.normalizeState(vars.get('storyState.state'));
+  const localFallback = harness.normalizeState(vars.get('storyState.state'));
   assert.strictEqual(generateCalls.length, 1, 'A syntactically valid empty result should not trigger JSON repair.');
-  assert.strictEqual(rejectedEmpty.meta.scanStatus, 'error');
-  assert.strictEqual(rejectedEmpty.meta.lastScannedFloor, null, 'Strong-candidate omission must preserve scan floor.');
-  assert.strictEqual(rejectedEmpty.meta.lastScannedMessageId, null, 'Strong-candidate omission must preserve message cursor.');
-  assert(/omitted strong recurring NPC candidate/i.test(rejectedEmpty.meta.lastScanSummary));
+  assert.strictEqual(localFallback.meta.scanStatus, 'idle');
+  assert.strictEqual(localFallback.npcs.length, 1, 'Strong recurring identity should be admitted locally.');
+  assert.strictEqual(localFallback.npcs[0].name, 'Dreg');
+  assert.strictEqual(localFallback.meta.lastScannedFloor, 1);
+  assert.strictEqual(localFallback.meta.lastScannedMessageId, 572);
 
   // Audit gate 5: the same companion pattern succeeds in one normal identity-first scan.
   clearRuntimeKeys();
@@ -189,30 +190,38 @@ function clearRuntimeKeys() {
   assert.strictEqual(scanned.meta.lastScannedMessageId, 606);
   assert.strictEqual(generateCalls.length, 1, 'Successful normal scan must remain one extraction request.');
 
-  // Audit gate 6: recovery for already-consumed history is one compact identity-only request
-  // and cannot alter the normal cursor or non-NPC collections.
+  // Audit gate 6: recovery for already-consumed history is fully local and cannot alter
+  // the normal cursor or non-NPC collections even when the chat-bound model/provider is broken.
   clearRuntimeKeys();
   const consumed = harness.newState();
   consumed.meta.lastScannedFloor = 5;
   consumed.meta.lastScannedMessageId = 606;
   consumed.knowledgeItems.push(harness.normalizeKnowledgeItem({ statement: 'Hooch is from another world.', truth: 'UNKNOWN', sensitivity: 'PRIVATE', updatedBy: 'manual' }));
   vars.set('storyState.state', consumed);
-  generateHandler = async (prompt) => {
-    assert(prompt.includes('NPC identity recovery tool'));
-    assert(!prompt.includes('PRESSURE RESPONSE EVIDENCE'));
-    assert(!prompt.includes('relationshipProposals":[{'), 'Recovery prompt must not request relationship analysis.');
-    return JSON.stringify(companionResult());
-  };
+  generateHandler = async () => { throw new Error('provider must never be called by NPC recovery'); };
   await harness.runNpcBackfill();
   const recovered = harness.normalizeState(vars.get('storyState.state'));
-  assert.strictEqual(generateCalls.length, 1, 'NPC recovery must use one focused model request.');
+  assert.strictEqual(generateCalls.length, 0, 'NPC recovery must not call the model/provider at all.');
   assert.deepStrictEqual(Array.from(recovered.npcs.map((npc) => npc.name).sort()), ['Dreg', 'Harl', 'Wrenna']);
   assert.strictEqual(recovered.meta.lastScannedFloor, 5);
   assert.strictEqual(recovered.meta.lastScannedMessageId, 606);
   assert.strictEqual(recovered.relationships.length, 0);
   assert.strictEqual(recovered.knowledgeItems.length, 1);
   assert.strictEqual(recovered.arcs.length, 0);
-  assert(/one identity-only request/.test(recovered.meta.lastScanSummary));
+  assert(/No model request was used/.test(recovered.meta.lastScanSummary));
+
+  // Audit gate 7: two saved assistant replies can admit an identity incrementally without
+  // waiting for a model scan.
+  clearRuntimeKeys();
+  const liveState = harness.newState();
+  vars.set('storyState.state', liveState);
+  await harness.processLocalNpcDiscoveryMessage({ id: 701, role: 'assistant', hidden: false, content: 'Dreg answers Hooch and checks the trail.' });
+  assert.strictEqual(harness.normalizeState(vars.get('storyState.state')).npcs.length, 0, 'One ordinary appearance should remain a candidate.');
+  await harness.processLocalNpcDiscoveryMessage({ id: 702, role: 'assistant', hidden: false, content: 'Dreg follows Hooch into the trees and keeps watch.' });
+  const liveAdmitted = harness.normalizeState(vars.get('storyState.state'));
+  assert.strictEqual(liveAdmitted.npcs.length, 1, 'Second strong saved appearance should admit the recurring NPC locally.');
+  assert.strictEqual(liveAdmitted.npcs[0].name, 'Dreg');
+  assert.strictEqual(generateCalls.length, 0, 'Incremental local NPC admission must not call the model.');
 
   console.log('StoryState audited extractor regression tests passed.');
 })().catch((error) => {
