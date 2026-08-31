@@ -20,15 +20,15 @@ PRIORITY ORDER:
 If output space is tight, omit low-priority detail; never omit an eligible NPC identity.
 
 NPC RULES:
-- Create only named story characters. Never create the protagonist, narrator, Tavo, system entities, unnamed crowds, or one-line extras.
+- Create only named story characters. Never create the protagonist, narrator, system entities, unnamed crowds, or one-line extras. Tavo is the app name, never a person or NPC.
 - Admission reasons: recurring (at least two real evidence message IDs), substantial_protagonist_relationship, meaningful_existing_npc_relationship, important_arc, obvious_recurring_or_major.
 - A clearly established traveling companion, party member, escape companion, guide, roommate, coworker, or similarly persistent attachment may use obvious_recurring_or_major from one strong message.
 - For a NEW NPC, keep fields light: role, age, pronouns, residence, appearanceAnchor, currentMotive. Do not establish communicationSignature, pressureResponse, coreValue, or contradiction on creation.
 - For an EXISTING NPC, stable personality fields are optional and require clear repeated evidence. communicationSignature is speech/voice only and needs two speaking messages. pressureResponse needs two genuine pressure messages. Never use gestures or stage directions as stable traits.
-- Residence requires explicit evidence that the NPC lives there. Current motive may be replaced or cleared only when the story establishes it.
+- Residence requires explicit evidence that the NPC lives there; mere presence at a location is not residence. Current motive may be replaced or cleared only when the story establishes it.
 
 OTHER STATE:
-- Relationships are directional NPC→Protagonist or NPC→NPC. Most scenes cause no change. Values use axes ${axes.join(" / ")} on 0–10; automatic movement is bounded later by StoryState.
+- Relationships are directional NPC→Protagonist or NPC→NPC. Never infer Protagonist→NPC feelings. Most scenes cause NO score change. Values use axes ${axes.join(" / ")} on 0–10; automatic movement is bounded later by StoryState.
 - Track only consequential information. An NPC belief does not change world truth. Use KNOWS, BELIEVES, or SUSPECTS only with evidence.
 - World arcs must be finite unresolved threads with actor, goal, current situation, and a concrete resolution target. Do not invent replacement arcs.
 - Every proposal must cite supplied or pending-candidate message IDs. Return at most 8 NPC, 4 relationship, 4 information, 6 knowledge, and 2 arc proposals.
