@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.8.0-dev.16",
+  "version": "0.8.0-dev.17",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -40,5 +40,5 @@
       }
     ]
   },
-  "releaseNotes": "Replace oversized NPC directory tiles with readable cards showing role, residence, motive, appearance and protagonist relationship scores. Add direct Edit scores and View profile actions."
+  "releaseNotes": "Add confirmed Delete NPC action with a recovery snapshot; remove connected relationships and NPC knowledge records while preserving shared facts and story history."
 }

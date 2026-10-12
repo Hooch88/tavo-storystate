@@ -452,3 +452,15 @@ assert.strictEqual(SCHEMA_VERSION, 12, 'Current StoryState schema should be v12.
 }
 
 console.log('StoryState Phase 2 state-model tests passed.');
+
+const deletion = harness.newState();
+deletion.npcs=[{id:'delete-me',name:'Deleted'},{id:'keep',name:'Kept'}];
+deletion.relationships=[{id:'out',sourceNpcId:'delete-me',targetType:'protagonist'},{id:'in',sourceNpcId:'keep',targetType:'npc',targetNpcId:'delete-me'},{id:'safe',sourceNpcId:'keep',targetType:'protagonist'}];
+deletion.knowledgeItems=[{id:'fact',statement:'Shared fact'}];
+deletion.knowledgeStates=[{npcId:'delete-me',informationId:'fact'},{npcId:'keep',informationId:'fact'}];
+assert.strictEqual(harness.removeNpcRecords(deletion,'delete-me'),true);
+assert.deepStrictEqual(deletion.npcs.map(n=>n.id),['keep']);
+assert.deepStrictEqual(deletion.relationships.map(r=>r.id),['safe']);
+assert.strictEqual(deletion.knowledgeStates.length,1);
+assert.strictEqual(deletion.knowledgeItems.length,1);
+assert.strictEqual(harness.removeNpcRecords(deletion,'missing'),false);
