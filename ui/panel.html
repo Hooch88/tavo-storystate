@@ -2,7 +2,10 @@
 <style>
 #ss-root{
   position:fixed;
-  inset:0;
+  top:var(--tavo-inset-top-bar, 48px);
+  bottom:var(--tavo-inset-bottom-input, 72px);
+  left:0;
+  right:0;
   z-index:2147483000;
   color-scheme:dark;
   background:#07090e;
@@ -578,6 +581,54 @@
   activateTab=function(tab="overview"){closeNpcDetailUiVNext();const target=["overview","npcs","relationships","knowledge","world","activity","settings"].includes(tab)?tab:"overview";document.querySelectorAll(".ss-bottom-nav button").forEach(b=>b.classList.toggle("is-active",b.dataset.tab===target));document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==target);const b=document.querySelector(".ss-body");if(b)b.scrollTop=0};
   openPanel=function(tab="overview"){activateTab(tab);render();root.hidden=false};
   root.addEventListener("click",e=>{const filter=e.target.closest?.("[data-npc-filter]");if(filter){root.dataset.npcFilter=filter.dataset.npcFilter||"all";render();return}const view=e.target.closest?.("[data-view-npc]");if(view){renderNpcDetailUiVNext(view.dataset.viewNpc);return}if(e.target.closest?.("[data-close-npc-detail]")){closeNpcDetailUiVNext();return}const edit=e.target.closest?.("[data-detail-edit]");if(edit){closeNpcDetailUiVNext();showNpcEditor(edit.dataset.detailEdit);return}if(e.target.closest?.("[data-edit-relationship],[data-edit-knowledge]"))closeNpcDetailUiVNext();const action=e.target.closest?.("[data-dashboard-action]");if(!action)return;const a=action.dataset.dashboardAction;if(a==="scan")requestScanNow();else if(a==="add-npc"){activateTab("npcs");showNpcEditor()}else if(a==="export")exportState();else if(a==="handoff"){activateTab("settings");showHandoffEditor()}else if(a==="npcs")activateTab("npcs")});
+  async function copyDiagnosticsText(){
+    const diagnostics=document.querySelector("#ss-diagnostics");
+    const value=String(diagnostics?.textContent||"").trim();
+    if(!value||value==="No diagnostics.")return tavo.utils.toast("No diagnostics are available to copy.");
+    try{
+      if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(value);
+      else{
+        const ta=document.createElement("textarea");
+        ta.value=value;
+        ta.style.position="fixed";
+        ta.style.opacity="0";
+        document.body.appendChild(ta);
+        ta.select();
+        if(!document.execCommand("copy"))throw new Error("Copy command failed");
+        ta.remove();
+      }
+      tavo.utils.toast("StoryState diagnostics copied.");
+    }catch(e){
+      console.error("[StoryState] Diagnostics copy failed",e);
+      tavo.utils.toast("Could not copy StoryState diagnostics.");
+    }
+  }
+
+  function installDiagnosticsCopyButton(){
+    if(document.querySelector("#ss-copy-diagnostics"))return;
+    const diagnostics=document.querySelector("#ss-diagnostics");
+    const section=diagnostics?.closest?.(".ss-section");
+    if(!section)return;
+    const actions=document.createElement("div");
+    actions.className="ss-actions";
+    actions.setAttribute("data-diagnostics-actions","");
+    const button=document.createElement("button");
+    button.id="ss-copy-diagnostics";
+    button.type="button";
+    button.textContent="⧉ Copy Diagnostics";
+    button.setAttribute("aria-label","Copy StoryState diagnostics");
+    button.addEventListener("click",copyDiagnosticsText);
+    actions.appendChild(button);
+    section.insertBefore(actions,diagnostics);
+  }
+
+  const __ssRenderBeforeDiagnosticsCopy=render;
+  render=function(...args){
+    const result=__ssRenderBeforeDiagnosticsCopy(...args);
+    installDiagnosticsCopyButton();
+    return result;
+  };
+  installDiagnosticsCopyButton();
   function readScanProgress(){const raw=tavo.get(SCAN_PROGRESS_KEY,"chat");return raw&&typeof raw==="object"&&!Array.isArray(raw)?raw:null}
   function setScanProgress(runId,phase){const id=text(runId,160);if(!id)return;const current=readScanProgress();if(current?.runId&&current.runId!==id)return;tavo.set(SCAN_PROGRESS_KEY,{runId:id,ownerId:RUNTIME_ID,phase:text(phase,120)||"Working",updatedAt:nowIso()},"chat");if(!root.hidden)render()}
   function clearScanProgress(runId=""){const current=readScanProgress(),id=text(runId,160);if(!current||!id||current.runId===id)tavo.set(SCAN_PROGRESS_KEY,null,"chat")}
@@ -595,9 +646,10 @@
   function jsonObjectCandidates(raw){const source=String(raw==null?"":raw).replace(/^\uFEFF/,"").trim(),candidates=[];if(!source)return candidates;const fenced=/```(?:json)?\s*([\s\S]*?)```/gi;let fm;while((fm=fenced.exec(source)))if(fm[1]?.trim())candidates.push(fm[1].trim());candidates.push(source);for(const chunk of [...candidates]){let depth=0,start=-1,inString=false,escaped=false;for(let i=0;i<chunk.length;i+=1){const ch=chunk[i];if(inString){if(escaped){escaped=false;continue}if(ch==="\\"){escaped=true;continue}if(ch==='"')inString=false;continue}if(ch==='"'){inString=true;continue}if(ch==="{"){if(depth===0)start=i;depth+=1;continue}if(ch==="}"&&depth>0){depth-=1;if(depth===0&&start>=0){candidates.push(chunk.slice(start,i+1));start=-1}}}}return [...new Set(candidates.map(v=>String(v||"").trim()).filter(Boolean))]}
   function removeJsonTrailingCommas(value){const source=String(value||"");let out="",inString=false,escaped=false;for(let i=0;i<source.length;i+=1){const ch=source[i];if(inString){out+=ch;if(escaped){escaped=false;continue}if(ch==="\\"){escaped=true;continue}if(ch==='"')inString=false;continue}if(ch==='"'){inString=true;out+=ch;continue}if(ch===","){let j=i+1;while(j<source.length&&/\s/.test(source[j]))j+=1;if(source[j]==="}"||source[j]==="]")continue}out+=ch}return out}
   function normalizeExtractionObject(parsed){return {npcProposals:Array.isArray(parsed?.npcProposals)?parsed.npcProposals:[],relationshipProposals:Array.isArray(parsed?.relationshipProposals)?parsed.relationshipProposals:[],informationProposals:Array.isArray(parsed?.informationProposals)?parsed.informationProposals:[],knowledgeProposals:Array.isArray(parsed?.knowledgeProposals)?parsed.knowledgeProposals:[],arcProposals:Array.isArray(parsed?.arcProposals)?parsed.arcProposals:[]}}
+  function extractionProposalCount(proposals){const p=normalizeExtractionObject(proposals);return p.npcProposals.length+p.relationshipProposals.length+p.informationProposals.length+p.knowledgeProposals.length+p.arcProposals.length}
   function parseExtractionResponse(raw){const errors=[];for(const candidate of jsonObjectCandidates(raw)){for(const variant of [candidate,removeJsonTrailingCommas(candidate)]){try{const parsed=JSON.parse(variant);if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed)){if(typeof parsed.content==="string"&&!Array.isArray(parsed.npcProposals)&&!Array.isArray(parsed.relationshipProposals)&&!Array.isArray(parsed.informationProposals)&&!Array.isArray(parsed.knowledgeProposals)&&!Array.isArray(parsed.arcProposals)){try{return parseExtractionResponse(parsed.content)}catch(_){ }}return normalizeExtractionObject(parsed)}}catch(e){errors.push(e?.message||"invalid JSON")}}}throw new Error(`Extractor response was not usable JSON${errors.length?`: ${text(errors.at(-1),160)}`:"."}`)}
-  function buildExtractionRepairPrompt(raw){return `Repair the following StoryState extractor output into exactly one valid JSON object. Do not analyze the story again. Preserve only proposals that are actually present in the supplied output. If the output was truncated, salvage complete proposals and discard incomplete trailing material. Return no markdown or commentary. The object must contain exactly these four array keys: npcProposals, relationshipProposals, informationProposals, knowledgeProposals. Missing categories must be empty arrays.\n\nMALFORMED EXTRACTOR OUTPUT:\n${text(raw,18000)}`}
-  async function parseExtractionWithOneRepair(raw,onRepair=null){try{return {proposals:parseExtractionResponse(raw),repaired:false}}catch(firstError){if(typeof onRepair==="function")onRepair();const repairPrompt=buildExtractionRepairPrompt(raw),repairedRaw=await withTimeout(tavo.generate(repairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:3500}}),SCAN_REPAIR_TIMEOUT_MS,"JSON repair");try{return {proposals:parseExtractionResponse(repairedRaw),repaired:true}}catch(secondError){const err=new Error(`Extractor response was not usable JSON after one repair attempt. ${text(secondError?.message||firstError?.message||"",180)}`);err.rawPreview=text(raw,900);throw err}}}
+  function buildExtractionRepairPrompt(raw){return `Repair the following StoryState extractor output into exactly one valid JSON object. Do not analyze the story again. Preserve only proposals that are actually present in the supplied output. If the output was truncated, salvage complete proposals and discard incomplete trailing material. Return no markdown or commentary. The object must contain exactly these five array keys: npcProposals, relationshipProposals, informationProposals, knowledgeProposals, arcProposals. Missing categories must be empty arrays.\n\nMALFORMED EXTRACTOR OUTPUT:\n${text(raw,18000)}`}
+  async function parseExtractionWithOneRepair(raw,onRepair=null){try{return {proposals:parseExtractionResponse(raw),repaired:false}}catch(firstError){if(typeof onRepair==="function")onRepair();const repairPrompt=buildExtractionRepairPrompt(raw),repairedRaw=await withTimeout(tavo.generate(repairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:3500}}),SCAN_REPAIR_TIMEOUT_MS,"JSON repair");try{const proposals=parseExtractionResponse(repairedRaw);if(extractionProposalCount(proposals)===0){const err=new Error("Extractor JSON required repair, but the repaired response contained no proposals. The scan cursor was not advanced so this batch can be retried safely.");err.rawPreview=text(raw,900);err.repairedPreview=text(repairedRaw,900);err.repairedEmpty=true;throw err}return {proposals,repaired:true}}catch(secondError){if(secondError?.repairedEmpty)throw secondError;const err=new Error(`Extractor response was not usable JSON after one repair attempt. ${text(secondError?.message||firstError?.message||"",180)}`);err.rawPreview=text(raw,900);err.repairedPreview=text(repairedRaw,900);throw err}}}
   function resolveNpcRef(state,id,name){const cleanId=text(id,120);if(cleanId){const byId=state.npcs.find(n=>active(n)&&n.id===cleanId);if(byId)return byId}const key=extractionNameKey(name);if(!key)return null;return state.npcs.find(n=>active(n)&&[n.name,...(n.aliases||[])].some(v=>extractionNameKey(v)===key))||null}
   function evidenceIdsForProposal(proposal,messageMap){return unique((Array.isArray(proposal?.evidenceMessageIds)?proposal.evidenceMessageIds:[]).map(v=>String(int(v,0,1e9,-1)))).map(Number).filter(id=>messageMap.has(id)).slice(-3)}
   function evidenceRecords(ids,messageMap){return ids.map(id=>({sourceMessageId:id,text:text(messageMap.get(id)?.content,500)})).filter(e=>e.text)}
@@ -671,22 +723,42 @@ Narrative actions/dialogue are primary evidence. Any tracker/tag text in narrati
   };
 
   buildExtractionRepairPrompt=function(raw){
-    return `You are a JSON syntax repair tool for StoryState. Repair only the supplied extractor output; do not analyze the story again and do not invent proposals. Preserve complete proposals that are actually present. If material is truncated, discard incomplete trailing proposals.\n\nSTRICT OUTPUT CONTRACT:\n- Your FIRST character must be { and your LAST character must be }.\n- Return exactly one valid JSON object.\n- No reasoning, preamble, explanation, markdown, code fences, comments, or text after the object.\n- Never write phrases such as "Let me analyze" or "Let me work through".\n- Never use placeholders such as [...], {...}, ellipses, or pseudo-JSON. Use [] or {} when content is unavailable.\n- Use standard double-quoted JSON keys and strings.\n- The object must contain exactly these five top-level array keys: npcProposals, relationshipProposals, informationProposals, knowledgeProposals, arcProposals. Missing categories must be empty arrays.\n\nMALFORMED EXTRACTOR OUTPUT:\n${text(raw,18000)}`;
+    return `You are a JSON syntax repair tool for StoryState. Repair the following StoryState extractor output only; do not analyze the story again and do not invent proposals. Preserve complete proposals that are actually present. If material is truncated, discard incomplete trailing proposals.\n\nSTRICT OUTPUT CONTRACT:\n- Your FIRST character must be { and your LAST character must be }.\n- Return exactly one valid JSON object.\n- No reasoning, preamble, explanation, markdown, code fences, comments, or text after the object.\n- Never write phrases such as "Let me analyze" or "Let me work through".\n- Never use placeholders such as [...], {...}, ellipses, or pseudo-JSON. Use [] or {} when content is unavailable.\n- Use standard double-quoted JSON keys and strings.\n- The object must contain exactly these five top-level array keys: npcProposals, relationshipProposals, informationProposals, knowledgeProposals, arcProposals. Missing categories must be empty arrays.\n\nMALFORMED EXTRACTOR OUTPUT:\n${text(raw,18000)}`;
   };
+
+  function dev8RejectEmptyRepair(proposals,raw,repairedRaw){
+    if(extractionProposalCount(proposals)>0)return proposals;
+    const err=new Error("Extractor JSON required repair, but the repaired response contained no proposals. The scan cursor was not advanced so this batch can be retried safely.");
+    err.rawPreview=text(raw,900);
+    err.repairedPreview=text(repairedRaw,900);
+    err.repairedEmpty=true;
+    throw err;
+  }
 
   parseExtractionWithOneRepair=async function(raw,onRepair=null){
     try{return {proposals:parseExtractionResponse(raw),repaired:false}}
     catch(firstError){
       if(typeof onRepair==="function")onRepair();
       const firstRepairPrompt=buildExtractionRepairPrompt(raw),firstRepairedRaw=await withTimeout(tavo.generate(firstRepairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:6000}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,120000),"JSON repair");
-      try{return {proposals:parseExtractionResponse(firstRepairedRaw),repaired:true}}
+      try{
+        const proposals=dev8RejectEmptyRepair(parseExtractionResponse(firstRepairedRaw),raw,firstRepairedRaw);
+        return {proposals,repaired:true};
+      }
       catch(secondError){
+        // A syntactically valid repair that lost every proposal is not a syntax failure. Retrying
+        // the empty repair would only risk consuming the batch, so fail closed immediately.
+        if(secondError?.repairedEmpty)throw secondError;
         if(typeof onRepair==="function")onRepair();
         const secondRepairPrompt=buildExtractionRepairPrompt(firstRepairedRaw),secondRepairedRaw=await withTimeout(tavo.generate(secondRepairPrompt,{context:false,settings:{temperature:0.01,maxCompletionTokens:6000}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),"JSON repair retry");
-        try{return {proposals:parseExtractionResponse(secondRepairedRaw),repaired:true}}
+        try{
+          const proposals=dev8RejectEmptyRepair(parseExtractionResponse(secondRepairedRaw),raw,secondRepairedRaw);
+          return {proposals,repaired:true};
+        }
         catch(thirdError){
+          if(thirdError?.repairedEmpty)throw thirdError;
           const err=new Error(`Extractor response was not usable JSON after two repair attempts. ${text(thirdError?.message||secondError?.message||firstError?.message||"",180)}`);
           err.rawPreview=text(raw,900);
+          err.repairedPreview=text(secondRepairedRaw,900);
           throw err;
         }
       }
@@ -733,6 +805,184 @@ Narrative actions/dialogue are primary evidence. Any tracker/tag text in narrati
     const hasMore=processedEndFloor<chatEndFloor;
     return {messages,startFloor,endFloor:processedEndFloor,chatEndFloor,hasMore,capped:hasMore};
   };
+  // 0.8.0-dev.10: restore a compact identity-first extractor after the dev.3-dev.5
+  // prompt grew large enough for reasoning models to spend their reply on analysis instead of JSON.
+  // The UI is deliberately not involved here.
+  const NPC_CANDIDATE_LEDGER_KEY="storyState.npcCandidateLedger.v1";
+  const AUDITED_SCAN_MAX_FLOORS=8,AUDITED_SCAN_MAX_CHARS=12000,AUDITED_MAX_CANDIDATES=14;
+  const NPC_CANDIDATE_STOPWORDS=new Set([
+    "a","across","after","all","an","and","another","any","are","as","at","back","before","behind","blood","boss","but","by","camp","day","dialog","earth","every","faerun","faerûn","first","for","from","fuck","glass","goblin","goblins","he","her","here","hers","him","his","hoo","how","i","i'd","i'll","i'm","i've","if","in","into","is","it","its","just","lady","long","master","me","meat","mode","moon","my","night","no","not","now","ooc","of","ok","okay","on","one","only","or","orcs","our","red","road","sacrifice","safe","segoe","shaman","she","silver","so","sos","shapes","palisade","dad","slow","wtf","sumber","ten","that","that's","the","their","them","then","there","these","they","this","those","three","time","to","together","tuesday","twenty","ui","unknown","we","what","whatever","whatever's","when","where","which","while","who","why","with","without","you","your"
+  ]);
+  const NPC_PERSON_ACTION_RE=/^(?:\s|[,'’"“”])*?(?:says?|said|asks?|asked|replies?|replied|answers?|answered|whispers?|whispered|shouts?|shouted|calls?|called|tells?|told|speaks?|spoke|looks?|looked|turns?|turned|walks?|walked|follows?|followed|joins?|joined|guides?|guided|leads?|led|takes?|took|holds?|held|nods?|nodded|shakes?|shook|steps?|stepped|moves?|moved|runs?|ran|sits?|sat|stands?|stood|laughs?|laughed|smiles?|smiled|frowns?|frowned|grabs?|grabbed|carries?|carried|watches?|watched|waits?|waited|keeps?|kept|steers?|steered|builds?|built|coughs?|coughed|hisses?|hissed|jerks?|jerked|stares?|stared|leans?|leaned|drops?|dropped|gives?|gave|gets?|got|helps?|helped|travels?|traveled|stays?|stayed|returns?|returned|comes?|came|goes?|went|escapes?|escaped|fights?|fought|points?|pointed|hands?|handed)\b/i;
+  const NPC_OBJECT_ACTION_RE=/\b(?:ask(?:s|ed)?|tell(?:s|ing|told)?|call(?:s|ed)?|follow(?:s|ed|ing)?|join(?:s|ed|ing)?|beside|alongside|sees?|saw|helps?|helped|guides?|guided|leads?|led)\s*$/i;
+  function auditedDirectCompanionEvidence(name,around){
+    const escaped=String(name||"").replace(/[.*+?^${}()|[\]\\]/g,"\\$&");if(!escaped)return false;
+    const roles="travel(?:s|ed|ing)?(?:\\s+with)?|traveling companion|companion|party member|fellow escapee|escape companion|joins?|joined|follows?|followed|guides?|guided|leads?|led|roommate|coworker|crew member|team member|prisoner escaping|escapes? with|escaping with|makes? camp with";
+    return new RegExp(`\\b${escaped}\\b[^.!?\\n]{0,140}\\b(?:${roles})\\b|\\b(?:${roles})\\b[^.!?\\n]{0,140}\\b${escaped}\\b`,"i").test(String(around||""));
+  }
+  function auditedCandidateText(value){return String(value==null?"":value).replace(/<[^>]*>/g," ").replace(/\[[A-Z][^\]]*\]|\[\/[A-Z]+\]/g," ").replace(/https?:\/\/\S+|data:[^\s]+/gi," ")}
+  function auditedCandidateName(raw){
+    const parts=String(raw||"").split(/\s+/).map(part=>part.replace(/[’']s$/i,"")).filter(Boolean);
+    if(!parts.length||parts.length>2)return "";
+    if(parts.some(part=>NPC_CANDIDATE_STOPWORDS.has(part.toLowerCase())||/^(?:i|we|you|he|she|they)['’](?:m|d|ll|ve|re|s)$/i.test(part)))return "";
+    return parts.join(" ");
+  }
+  function auditedReservedNames(chatInfo={}){return new Set(["tavo","narrator","simulation master",extractionNameKey(chatInfo?.persona?.name),...(Array.isArray(chatInfo?.characters)?chatInfo.characters.map(c=>extractionNameKey(c?.name)):[])].filter(Boolean))}
+  function collectAuditedNpcCandidates(messages,reservedNames=new Set()){
+    const groups=new Map(),pattern=/\b[A-Z][A-Za-z'’\-]{1,35}(?:\s+[A-Z][A-Za-z'’\-]{1,35})?\b/g;
+    for(const message of Array.isArray(messages)?messages:[]){
+      const id=int(message?.id,0,1e9,null),content=auditedCandidateText(message?.content);if(id==null||!content)continue;
+      let match;
+      while((match=pattern.exec(content))){
+        const name=auditedCandidateName(match[0]),key=extractionNameKey(name);if(!key||isReservedNpcName(name,reservedNames))continue;
+        const before=content.slice(Math.max(0,match.index-90),match.index),after=content.slice(match.index+match[0].length,match.index+match[0].length+120),around=text(content.slice(Math.max(0,match.index-120),match.index+match[0].length+180).replace(/\s+/g," "),320),person=NPC_PERSON_ACTION_RE.test(after)||NPC_OBJECT_ACTION_RE.test(before),companion=auditedDirectCompanionEvidence(name,around),selfIntro=new RegExp(`["“]${name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\b[.!?,]`,`i`).test(content);
+        if(!person&&!selfIntro)continue;
+        if(!groups.has(key))groups.set(key,{key,name,evidence:new Map(),personIds:new Set(),companionIds:new Set(),currentIds:new Set()});
+        const group=groups.get(key);group.currentIds.add(id);if(person)group.personIds.add(id);if(companion)group.companionIds.add(id);if(!group.evidence.has(id))group.evidence.set(id,{id,text:around,person:!!person,companion:!!companion});
+      }
+    }
+    return [...groups.values()].map(group=>({...group,evidence:[...group.evidence.values()].sort((a,b)=>a.id-b.id)})).sort((a,b)=>b.personIds.size-a.personIds.size||b.evidence.length-a.evidence.length||a.name.localeCompare(b.name)).slice(0,AUDITED_MAX_CANDIDATES)
+  }
+  function loadNpcCandidateLedger(state){
+    const raw=tavo.get(NPC_CANDIDATE_LEDGER_KEY,"chat"),campaignId=text(state?.campaign?.id,160);
+    if(!raw||typeof raw!=="object"||Array.isArray(raw)||raw.campaignId!==campaignId||!Array.isArray(raw.items))return {campaignId,items:[]};
+    return {campaignId,items:raw.items.map(item=>({key:extractionNameKey(item?.name),name:text(item?.name,120),evidence:(Array.isArray(item?.evidence)?item.evidence:[]).map(e=>({id:int(e?.id,0,1e9,null),text:text(e?.text,320),person:!!e?.person,companion:!!e?.companion})).filter(e=>e.id!=null&&e.text).slice(-6)})).filter(item=>item.key&&item.name)};
+  }
+  function mergeNpcCandidateLedger(state,currentCandidates){
+    const ledger=loadNpcCandidateLedger(state),map=new Map(ledger.items.map(item=>[item.key,{...item,evidence:[...item.evidence]}]));
+    for(const candidate of currentCandidates){
+      const item=map.get(candidate.key)||{key:candidate.key,name:candidate.name,evidence:[]},evidenceMap=new Map(item.evidence.map(e=>[e.id,e]));
+      for(const evidence of candidate.evidence)evidenceMap.set(evidence.id,evidence);
+      item.name=candidate.name;item.evidence=[...evidenceMap.values()].sort((a,b)=>a.id-b.id).slice(-6);map.set(candidate.key,item);
+    }
+    const tracked=new Set((state.npcs||[]).filter(active).flatMap(n=>[n.name,...(n.aliases||[])]).map(extractionNameKey).filter(Boolean));
+    ledger.items=[...map.values()].filter(item=>!tracked.has(item.key)).sort((a,b)=>(b.evidence.at(-1)?.id||0)-(a.evidence.at(-1)?.id||0)).slice(0,40);
+    tavo.set(NPC_CANDIDATE_LEDGER_KEY,ledger,"chat");return ledger;
+  }
+  function combinedNpcCandidateHints(state,currentCandidates){
+    const ledger=loadNpcCandidateLedger(state),currentKeys=new Set(currentCandidates.map(c=>c.key)),map=new Map();
+    for(const item of ledger.items)map.set(item.key,{key:item.key,name:item.name,evidence:[...item.evidence],current:false});
+    for(const candidate of currentCandidates){const existing=map.get(candidate.key)||{key:candidate.key,name:candidate.name,evidence:[],current:true},evidenceMap=new Map(existing.evidence.map(e=>[e.id,e]));for(const evidence of candidate.evidence)evidenceMap.set(evidence.id,evidence);existing.name=candidate.name;existing.current=true;existing.evidence=[...evidenceMap.values()].sort((a,b)=>a.id-b.id).slice(-6);map.set(candidate.key,existing)}
+    return [...map.values()].map(item=>{const personCount=item.evidence.filter(e=>e.person).length,companionCount=item.evidence.filter(e=>e.companion).length,currentIds=new Set(currentCandidates.find(c=>c.key===item.key)?.evidence.map(e=>e.id)||[]);return {...item,currentIds,personCount,companionCount,strong:item.evidence.length>=2&&personCount>=2,obvious:item.evidence.length>=1&&personCount>=1&&companionCount>=1}}).sort((a,b)=>Number(b.current)-Number(a.current)||Number(b.obvious)-Number(a.obvious)||b.personCount-a.personCount||b.evidence.length-a.evidence.length).slice(0,AUDITED_MAX_CANDIDATES)
+  }
+  function compactExtractionState(state,messages){
+    const scanText=messages.map(m=>m.content).join("\n"),relevant=scanRelevantNpcs(state,scanText).slice(0,8),relevantIds=new Set(relevant.map(n=>n.id));
+    return {
+      npcDirectory:(state.npcs||[]).filter(active).slice(0,80).map(n=>({id:n.id,name:n.name,aliases:n.aliases||[],role:text(n.role,120)})),
+      relevantNpcs:relevant.map(n=>({id:n.id,name:n.name,role:text(n.role,120),residence:text(n.residence,120),appearanceAnchor:text(n.appearanceAnchor,180),communicationSignature:text(n.communicationSignature,180),pressureResponse:text(n.pressureResponse,180),coreValue:text(n.coreValue,140),currentMotive:text(n.currentMotive,180),contradiction:text(n.contradiction,180),manualOverrides:n.manualOverrides||[]})),
+      relationships:(state.relationships||[]).filter(r=>active(r)&&relevantIds.has(r.sourceNpcId)&&(r.targetType==="protagonist"||relevantIds.has(r.targetNpcId))).slice(0,12).map(r=>({id:r.id,sourceNpcId:r.sourceNpcId,targetType:r.targetType,targetNpcId:r.targetNpcId,axes:r.axes,relationshipStatus:r.relationshipStatus,stanceSummary:text(r.stanceSummary,180),manualAuthorityThroughMessageId:r.manualAuthorityThroughMessageId})),
+      information:(state.knowledgeItems||[]).filter(active).slice(-30).map(i=>({id:i.id,statement:text(i.statement,220),truth:i.truth,sensitivity:i.sensitivity,manualAuthorityThroughMessageId:i.manualAuthorityThroughMessageId})),
+      knowledge:(state.knowledgeStates||[]).filter(k=>active(k)&&relevantIds.has(k.npcId)).slice(-30).map(k=>({npcId:k.npcId,informationId:k.informationId,state:k.state,manualAuthorityThroughMessageId:k.manualAuthorityThroughMessageId})),
+      arcs:state.config.worldTrackingEnabled===false?[]:(state.arcs||[]).filter(a=>["active","dormant"].includes(a.status)).slice(0,10).map(a=>({id:a.id,title:a.title,actor:text(a.actor,120),goal:text(a.goal,180),currentSituation:text(a.currentSituation,220),nextLikelyMove:text(a.nextLikelyMove,160),trigger:text(a.trigger,140),resolutionTarget:text(a.resolutionTarget,180),stage:a.stage,status:a.status,directive:a.directive,manualAuthorityThroughMessageId:a.manualAuthorityThroughMessageId}))
+    }
+  }
+  buildExtractionPrompt=function(state,messages,chatInfo={}){
+    const reserved=auditedReservedNames(chatInfo),currentCandidates=collectAuditedNpcCandidates(messages,reserved);mergeNpcCandidateLedger(state,currentCandidates);const candidateHints=combinedNpcCandidateHints(state,currentCandidates).map(c=>({name:c.name,evidenceMessageIds:c.evidence.map(e=>e.id),current:c.current,personEvidence:c.personCount,companionEvidence:c.companionCount,qualifiesAsRecurring:c.strong,mayBeObviousCompanion:c.obvious,priorEvidence:c.evidence.filter(e=>!c.currentIds?.has?.(e.id)).slice(-2).map(e=>({id:e.id,text:e.text}))})),snapshot=compactExtractionState(state,messages),axes=relationshipAxesForConfig(state.config),story=messages.map(m=>`[${m.id}] ${String(m.role||"").toUpperCase()}: ${m.content}`).join("\n\n");
+    return `You are StoryState's evidence-based state extractor. Analyze only the supplied saved messages. Do not continue the story. Return one valid JSON object, with no prose, reasoning, markdown, or code fence. Your first character must be { and your last character must be }.
+
+PRIORITY ORDER:
+1. NPC IDENTITY FIRST. Do not omit an eligible recurring or clearly important named character to spend tokens on personality detail or other categories.
+2. Clear updates to already tracked NPCs.
+3. Meaningful relationship, consequential knowledge, and finite world-arc deltas.
+If output space is tight, omit low-priority detail; never omit an eligible NPC identity.
+
+NPC RULES:
+- Create only named story characters. Never create the protagonist, narrator, system entities, unnamed crowds, or one-line extras. Tavo is the app name, never a person or NPC.
+- Admission reasons: recurring (at least two real evidence message IDs), substantial_protagonist_relationship, meaningful_existing_npc_relationship, important_arc, obvious_recurring_or_major.
+- A clearly established traveling companion, party member, escape companion, guide, roommate, coworker, or similarly persistent attachment may use obvious_recurring_or_major from one strong message.
+- For a NEW NPC, keep fields light: role, age, pronouns, residence, appearanceAnchor, currentMotive. Do not establish communicationSignature, pressureResponse, coreValue, or contradiction on creation.
+- For an EXISTING NPC, stable personality fields are optional and require clear repeated evidence. communicationSignature is speech/voice only and needs two speaking messages. pressureResponse needs two genuine pressure messages. Never use gestures or stage directions as stable traits.
+- Residence requires explicit evidence that the NPC lives there; mere presence at a location is not residence. Current motive may be replaced or cleared only when the story establishes it.
+
+OTHER STATE:
+- Relationships are directional NPC→Protagonist or NPC→NPC. Never infer Protagonist→NPC feelings. Most scenes cause NO score change. Values use axes ${axes.join(" / ")} on 0–10; automatic movement is bounded later by StoryState.
+- Track only consequential information. An NPC belief does not change world truth. Use KNOWS, BELIEVES, or SUSPECTS only with evidence.
+- World arcs must be finite unresolved threads with actor, goal, current situation, and a concrete resolution target. Do not invent replacement arcs.
+- Every proposal must cite supplied or pending-candidate message IDs. Return at most 8 NPC, 4 relationship, 4 information, 6 knowledge, and 2 arc proposals.
+
+HEURISTIC NPC CANDIDATES (hints, not facts; classify carefully):
+${JSON.stringify(candidateHints)}
+
+CURRENT STORYSTATE:
+${JSON.stringify(snapshot)}
+
+SAVED MESSAGES:
+${story}
+
+OUTPUT SHAPE:
+{"npcProposals":[{"action":"create|update","npcId":"existing id or null","name":"canonical name","aliases":[],"admissionReason":"recurring|substantial_protagonist_relationship|meaningful_existing_npc_relationship|important_arc|obvious_recurring_or_major","clearCurrentMotive":false,"fields":{"role":"","age":"","pronouns":"","residence":"","appearanceAnchor":"","communicationSignature":"existing NPC only","pressureResponse":"existing NPC only","coreValue":"existing NPC only","currentMotive":"","contradiction":"existing NPC only"},"evidenceMessageIds":[123]}],"relationshipProposals":[{"action":"create|update","sourceNpcId":"id or null","sourceName":"name","targetType":"protagonist|npc","targetNpcId":"id or null","targetName":"name or empty","axisTargets":{"${axes[0]||"Trust"}":5,"${axes[1]||"Affinity"}":5},"relationshipStatus":"","stanceSummary":"","stanceChanged":false,"evidenceMessageIds":[123]}],"informationProposals":[{"action":"create|update","informationId":"id or null","key":"short key","statement":"exact consequential proposition","truth":"TRUE|FALSE|UNKNOWN","sensitivity":"NORMAL|PRIVATE|SECRET","evidenceMessageIds":[123]}],"knowledgeProposals":[{"npcId":"id or null","npcName":"name","informationId":"id or null","informationKey":"key or empty","statement":"exact fallback or empty","state":"KNOWS|BELIEVES|SUSPECTS","evidenceMessageIds":[123]}],"arcProposals":[{"action":"create|update","arcId":"id or null","title":"","actor":"","goal":"","currentSituation":"","nextLikelyMove":"","trigger":"","resolutionTarget":"","stage":"distant|developing|approaching|imminent","playerKnownSummary":"","directorOnlyTruth":"","status":"active|dormant|resolved","outcomeSummary":"","progressed":false,"relevantNoProgress":false,"evidenceMessageIds":[123]}]}
+Use empty arrays for categories with no meaningful delta.`;
+  };
+  buildExtractionRepairPrompt=function(raw){return `Repair the following StoryState extractor output. Repair only its JSON syntax; do not analyze the story and do not invent data. Return exactly one JSON object with five array keys: npcProposals, relationshipProposals, informationProposals, knowledgeProposals, arcProposals. Preserve complete proposals already present; discard incomplete trailing material. Use [] for missing categories. No prose, markdown, reasoning, or text outside the object.\n\nOUTPUT TO REPAIR:\n${text(raw,16000)}`};
+  parseExtractionWithOneRepair=async function(raw,onRepair=null){
+    try{return {proposals:parseExtractionResponse(raw),repaired:false}}
+    catch(firstError){
+      if(typeof onRepair==="function")onRepair();
+      const repairedRaw=await withTimeout(tavo.generate(buildExtractionRepairPrompt(raw),{context:false,timeout:Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),settings:{temperature:0.1,maxCompletionTokens:2200}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),"JSON repair");
+      try{
+        const proposals=parseExtractionResponse(repairedRaw);
+        if(extractionProposalCount(proposals)===0){const err=new Error("Extractor JSON required repair, but the repaired response contained no proposals. The scan cursor was not advanced so this batch can be retried safely.");err.rawPreview=text(raw,900);err.repairedPreview=text(repairedRaw,900);err.repairedEmpty=true;throw err}
+        return {proposals,repaired:true};
+      }catch(secondError){if(secondError?.repairedEmpty)throw secondError;const err=new Error(`Extractor response was not usable JSON after one repair attempt. ${text(secondError?.message||firstError?.message||"",180)}`);err.rawPreview=text(raw,900);err.repairedPreview=text(repairedRaw,900);throw err}
+    }
+  };
+  collectScanBatch=async function(state){
+    const count=await tavo.message.count();if(!count)return {messages:[],startFloor:0,endFloor:-1,chatEndFloor:-1,hasMore:false,capped:false};
+    const chatEndFloor=count-1,storedFloor=state.meta.lastScannedFloor;if(storedFloor!=null&&storedFloor>=chatEndFloor)return {messages:[],startFloor:chatEndFloor+1,endFloor:chatEndFloor,chatEndFloor,hasMore:false,capped:false};
+    const initialStart=Math.max(0,chatEndFloor-Math.max(state.config.scanEveryPosts*2,24)+1),startFloor=storedFloor==null||storedFloor>chatEndFloor?initialStart:storedFloor+1,windowEnd=Math.min(chatEndFloor,startFloor+AUDITED_SCAN_MAX_FLOORS-1),raw=await tavo.message.find([startFloor,windowEnd]),messages=[];let chars=0,processedEndFloor=startFloor-1;
+    for(let i=0;i<(Array.isArray(raw)?raw.length:0);i+=1){const floor=startFloor+i,m=raw[i];if(!m){processedEndFloor=floor;continue}if(m.hidden||!["user","assistant"].includes(m.role)){processedEndFloor=floor;continue}const content=text(stripStructuredNpcHints(m.content),5000);if(!content||content.includes("<!-- TVL_VISUAL_REFERENCE -->")){processedEndFloor=floor;continue}if((messages.length>=AUDITED_SCAN_MAX_FLOORS||chars+content.length>AUDITED_SCAN_MAX_CHARS)&&messages.length)break;chars+=content.length;messages.push({id:int(m.id,0,1e9,null),role:m.role,content});processedEndFloor=floor}
+    if(processedEndFloor<startFloor&&windowEnd>=startFloor)processedEndFloor=windowEnd;const hasMore=processedEndFloor<chatEndFloor;return {messages,startFloor,endFloor:processedEndFloor,chatEndFloor,hasMore,capped:hasMore};
+  };
+  const __ssPreAuditApplyExtractionProposals=applyExtractionProposals;
+  applyExtractionProposals=function(state,proposals,messageMap,reservedNames=new Set()){
+    const currentCandidates=collectAuditedNpcCandidates([...messageMap.values()],reservedNames),ledger=mergeNpcCandidateLedger(state,currentCandidates),augmentedMap=new Map(messageMap);
+    for(const item of ledger.items)for(const evidence of item.evidence)if(!augmentedMap.has(evidence.id))augmentedMap.set(evidence.id,{id:evidence.id,role:"assistant",content:evidence.text});
+    const beforeNames=new Set((state.npcs||[]).filter(active).map(n=>extractionNameKey(n.name))),result=__ssPreAuditApplyExtractionProposals(state,proposals,augmentedMap,reservedNames),localResult=promoteLocalNpcCandidates(state,currentCandidates,reservedNames,"local-discovery"),afterNames=new Set((state.npcs||[]).filter(active).map(n=>extractionNameKey(n.name))),newNames=[...afterNames].filter(name=>!beforeNames.has(name));
+    if(localResult.changes.length)result.changes.push(...localResult.changes);if(localResult.skipped.length)result.skipped.push(...localResult.skipped);
+    mergeNpcCandidateLedger(state,[]);
+    const pending=combinedNpcCandidateHints(state,currentCandidates).filter(c=>c.current&&!afterNames.has(c.key)&&localNpcCandidateQualification(c).qualifies);
+    if(!newNames.length&&pending.length){const names=pending.slice(0,5).map(c=>c.name).join(", ");const err=new Error(`Extractor omitted strong recurring NPC candidate${pending.length===1?"":"s"}: ${names}. Local identity admission could not safely promote the candidate, so the scan cursor was not advanced.`);err.rawPreview=`Pending NPC candidates: ${pending.slice(0,8).map(c=>`${c.name} [${c.evidence.map(e=>e.id).join(", ")}]`).join(" · ")}`;throw err}
+    return result;
+  };
+  if(typeof __storyStateTestHarness!=="undefined"&&__storyStateTestHarness)Object.assign(__storyStateTestHarness,{NPC_CANDIDATE_LEDGER_KEY,AUDITED_SCAN_MAX_FLOORS,AUDITED_SCAN_MAX_CHARS,auditedCandidateName,auditedReservedNames,collectAuditedNpcCandidates,loadNpcCandidateLedger,mergeNpcCandidateLedger,combinedNpcCandidateHints,compactExtractionState,auditedDirectCompanionEvidence,buildExtractionPrompt,buildExtractionRepairPrompt,parseExtractionWithOneRepair});
+  // 0.8.0-dev.11: NPC identity must not depend on a second model request.
+  // This conservative local admission layer only promotes named candidates after repeated
+  // person-action evidence (or repeated evidence plus an explicit persistent-companion cue).
+  const LOCAL_NPC_ACTION_WORDS="says?|said|asks?|asked|replies?|replied|answers?|answered|whispers?|whispered|shouts?|shouted|calls?|called|turns?|turned|walks?|walked|follows?|followed|joins?|joined|guides?|guided|leads?|led|takes?|took|holds?|held|nods?|nodded|shakes?|shook|steps?|stepped|moves?|moved|runs?|ran|sits?|sat|stands?|stood|laughs?|laughed|smiles?|smiled|frowns?|frowned|grabs?|grabbed|carries?|carried|watches?|watched|waits?|waited|keeps?|kept|steers?|steered|builds?|built|coughs?|coughed|hisses?|hissed|jerks?|jerked|stares?|stared|leans?|leaned|drops?|dropped|gives?|gave|helps?|helped|travels?|traveled|travels?|stays?|stayed|returns?|returned|comes?|came|goes?|went";
+  function localNpcStrongActionEvidence(name,value){
+    const escaped=String(name||"").replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),source=String(value||"");if(!escaped||!source)return false;
+    const subject=new RegExp(`\\b${escaped}\\b[^.!?\\n]{0,36}\\b(?:${LOCAL_NPC_ACTION_WORDS})\\b`,`i`),object=new RegExp(`\\b(?:asks?|asked|tells?|told|calls?|called|follows?|followed|helps?|helped|guides?|guided|leads?|led|joins?|joined)\\b[^.!?\\n]{0,24}\\b${escaped}\\b`,`i`);
+    return subject.test(source)||object.test(source);
+  }
+  function localNpcCandidateQualification(candidate){
+    const evidence=Array.isArray(candidate?.evidence)?candidate.evidence:[],ids=new Set(evidence.map(e=>e?.id).filter(id=>id!=null)),strongCount=evidence.filter(e=>localNpcStrongActionEvidence(candidate?.name,e?.text)).length,companionCount=evidence.filter(e=>e?.companion).length,personCount=evidence.filter(e=>e?.person).length;
+    const qualifies=ids.size>=2&&((companionCount>=1&&personCount>=2)||strongCount>=2)||(ids.size>=3&&personCount>=3);
+    return {qualifies,distinctEvidence:ids.size,strongCount,companionCount,personCount};
+  }
+  function promoteLocalNpcCandidates(state,currentCandidates,reservedNames=new Set(),source="local-discovery"){
+    const changes=[],skipped=[],combined=combinedNpcCandidateHints(state,currentCandidates);
+    for(const candidate of combined){
+      if(resolveNpcRef(state,null,candidate.name))continue;
+      const qualification=localNpcCandidateQualification(candidate);if(!qualification.qualifies)continue;
+      if(isReservedNpcName(candidate.name,reservedNames)){skipped.push(`${candidate.name}: reserved/generic candidate`);continue}
+      const latest=Math.max(...candidate.evidence.map(e=>Number(e.id)||0)),npc=normalizeNpc({name:candidate.name,lastMeaningfulMessageId:latest||null,createdBy:source,updatedBy:source,manualOverrides:[]});
+      if(!npc.name)continue;state.npcs.push(npc);changes.push(`+ NPC ${npc.name}`);
+    }
+    mergeNpcCandidateLedger(state,[]);
+    return {changes,skipped};
+  }
+  async function processLocalNpcDiscoveryMessage(message){
+    try{
+      if(!message||message.hidden||message.role!=="assistant")return;
+      const state=loadState(),chatInfo=await tavo.chat.current().catch(()=>null),reserved=auditedReservedNames(chatInfo||{}),candidates=collectAuditedNpcCandidates([{id:message.id,role:message.role,content:String(message.content||"")}],reserved);
+      if(!candidates.length)return;mergeNpcCandidateLedger(state,candidates);
+      const current=loadState();if(["queued","running"].includes(current.meta.scanStatus))return;
+      const working=normalizeState(clone(current)),result=promoteLocalNpcCandidates(working,candidates,reserved,"local-discovery");if(!result.changes.length)return;
+      const latest=loadState();if(latest.revision!==current.revision||["queued","running"].includes(latest.meta.scanStatus))return;
+      addDiagnostic(working,"info",`Local NPC admission: ${result.changes.join(" · ")}`);saveRecovery("Before local NPC admission",latest);working.revision=latest.revision+1;working.schemaVersion=SCHEMA_VERSION;tavo.set(STATE_KEY,normalizeState(working),"chat");const verified=normalizeState(tavo.get(STATE_KEY,"chat"));if(verified.revision!==working.revision)throw new Error("Local NPC admission save verification failed.");stateCache=verified;publishCampaignIdentity(verified);if(!root.hidden)render();
+    }catch(e){console.error("[StoryState] local NPC discovery failed",e)}
+  }
+  if(typeof __storyStateTestHarness!=="undefined"&&__storyStateTestHarness)Object.assign(__storyStateTestHarness,{localNpcStrongActionEvidence,localNpcCandidateQualification,promoteLocalNpcCandidates,processLocalNpcDiscoveryMessage});
   async function collectScanBatch(state){const count=await tavo.message.count();if(!count)return {messages:[],startFloor:0,endFloor:-1,chatEndFloor:-1,hasMore:false,capped:false};const chatEndFloor=count-1,storedFloor=state.meta.lastScannedFloor;if(storedFloor!=null&&storedFloor>=chatEndFloor)return {messages:[],startFloor:chatEndFloor+1,endFloor:chatEndFloor,chatEndFloor,hasMore:false,capped:false};const initialStart=Math.max(0,chatEndFloor-Math.max(state.config.scanEveryPosts*2,24)+1),startFloor=storedFloor==null||storedFloor>chatEndFloor?initialStart:storedFloor+1,windowEnd=Math.min(chatEndFloor,startFloor+SCAN_MAX_FLOORS-1),raw=await tavo.message.find([startFloor,windowEnd]),messages=[];let chars=0,processedEndFloor=startFloor-1;for(let i=0;i<(Array.isArray(raw)?raw.length:0);i+=1){const floor=startFloor+i,m=raw[i];if(!m){processedEndFloor=floor;continue}if(m.hidden||!["user","assistant"].includes(m.role)){processedEndFloor=floor;continue}const content=text(stripStructuredNpcHints(m.content),5000);if(!content||content.includes("<!-- TVL_VISUAL_REFERENCE -->")){processedEndFloor=floor;continue}if(chars+content.length>SCAN_MAX_CHARS&&messages.length)break;chars+=content.length;messages.push({id:int(m.id,0,1e9,null),role:m.role,content});processedEndFloor=floor}if(processedEndFloor<startFloor&&windowEnd>=startFloor)processedEndFloor=windowEnd;const hasMore=processedEndFloor<chatEndFloor;return {messages,startFloor,endFloor:processedEndFloor,chatEndFloor,hasMore,capped:hasMore}}
   function scanNonce(request){return text(request?.nonce,160)}
   function scanOwnedByRuntime(requestOrNonce,state=null){const nonce=typeof requestOrNonce==="string"?text(requestOrNonce,160):scanNonce(requestOrNonce),current=state?normalizeState(state):normalizeState(tavo.get(STATE_KEY,"chat"));return !!nonce&&current.meta.scanStatus==="running"&&current.meta.scanRunId===nonce&&current.meta.scanOwnerId===RUNTIME_ID}
@@ -743,7 +993,71 @@ Narrative actions/dialogue are primary evidence. Any tracker/tag text in narrati
   function resetScanState(message="Scan reset manually. Existing StoryState data was not changed."){activeScanToken+=1;scanInFlight=false;try{tavo.set(SCAN_REQUEST_KEY,null,"chat");tavo.set(SCAN_PROGRESS_KEY,null,"chat")}catch(_){ }const state=loadState();state.meta.scanStatus="idle";clearScanLease(state);state.meta.lastScanSummary=message;addDiagnostic(state,"info",message);state.revision+=1;tavo.set(STATE_KEY,normalizeState(state),"chat");stateCache=normalizeState(tavo.get(STATE_KEY,"chat"));if(!root.hidden)render();return stateCache}
   function recoverStaleRunningScan(){const state=loadState();if(state.meta.scanStatus!=="running")return false;if(scanInFlight&&state.meta.scanOwnerId===RUNTIME_ID)return false;const started=Date.parse(state.meta.scanStartedAt||""),expired=!Number.isFinite(started)||(Date.now()-started)>=SCAN_LEASE_TIMEOUT_MS;if(!expired)return false;resetScanState("Recovered a scan that exceeded the 10-minute cross-runtime lease. Any late extractor result will be ignored. Existing StoryState data was not changed.");return true}
   async function currentChatFloor(){try{const count=await tavo.message.count();return Math.max(-1,int(count,0,1e9,0)-1)}catch(_){return -1}}
-  async function runExtractionScan(request={}){if(scanInFlight)return;const suppliedNonce=scanNonce(request),requestNonce=suppliedNonce||uid("scan"),effectiveRequest={...request,type:"scan",nonce:requestNonce};if(!suppliedNonce&&!tavo.get(SCAN_REQUEST_KEY,"chat"))tavo.set(SCAN_REQUEST_KEY,effectiveRequest,"chat");const claimed=claimScan(effectiveRequest);if(!claimed)return;const runToken=++activeScanToken;scanInFlight=true;try{const workingBase=normalizeState(clone(claimed));setScanProgress(requestNonce,"Reading saved story messages");const batch=await collectScanBatch(workingBase);if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;const cadence=int(workingBase.config.scanEveryPosts,2,100,20);if(!batch.messages.length){const latest=loadState();if(!scanOwnedByRuntime(requestNonce,latest))return;const working=normalizeState(clone(latest)),latestFloor=await currentChatFloor();if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;const hasMoreNow=batch.hasMore||(latestFloor>=0&&batch.endFloor<latestFloor);working.meta.scanStatus="idle";clearScanLease(working);working.meta.postsSinceScan=hasMoreNow?cadence:0;working.meta.lastScannedFloor=batch.endFloor>=0?batch.endFloor:working.meta.lastScannedFloor;working.meta.lastScanAt=nowIso();working.meta.lastScanSummary=hasMoreNow?"No narrative state changes in this bounded batch; unscanned messages still remain.":"No new narrative messages to extract.";commitExtractedState(latest,working,working.meta.lastScanSummary,requestNonce);clearScanProgress(requestNonce);return}const chatInfo=await tavo.chat.current().catch(()=>null);if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;setScanProgress(requestNonce,`Analyzing ${batch.messages.length} saved story message(s)`);const prompt=buildExtractionPrompt(workingBase,batch.messages,chatInfo||{}),raw=await withTimeout(tavo.generate(prompt,{context:false,settings:{temperature:0.1,maxCompletionTokens:5000}}),SCAN_EXTRACT_TIMEOUT_MS,"StoryState extraction");if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;setScanProgress(requestNonce,"Parsing extractor response");const parsedResult=await parseExtractionWithOneRepair(raw,()=>setScanProgress(requestNonce,"Repairing malformed JSON once"));if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;setScanProgress(requestNonce,"Applying and verifying StoryState updates");const latest=loadState();if(!scanOwnedByRuntime(requestNonce,latest))return;const proposals=parsedResult.proposals,messageMap=new Map(batch.messages.map(m=>[m.id,m])),reserved=new Set(["tavo","narrator","simulation master",extractionNameKey(chatInfo?.persona?.name),...(Array.isArray(chatInfo?.characters)?chatInfo.characters.map(c=>extractionNameKey(c?.name)):[])].filter(Boolean)),working=normalizeState(clone(latest)),result=applyExtractionProposals(working,proposals,messageMap,reserved),last=batch.messages.at(-1),latestFloor=await currentChatFloor();if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;const hasMoreNow=batch.hasMore||(latestFloor>=0&&batch.endFloor<latestFloor);working.meta.postsSinceScan=hasMoreNow?cadence:0;working.meta.lastScannedFloor=batch.endFloor;working.meta.lastScannedMessageId=last?.id??working.meta.lastScannedMessageId;working.meta.lastScanAt=nowIso();working.meta.scanStatus="idle";clearScanLease(working);const prefix=`${parsedResult.repaired?"Extractor JSON repaired once. ":""}${hasMoreNow?"More unscanned messages remain after this bounded batch. ":""}`,detail=result.changes.length?result.changes.slice(0,8).join(" · "):"No meaningful state changes.";working.meta.lastScanSummary=`${prefix}${detail}${result.skipped.length?` · ${result.skipped.length} proposal(s) skipped`:""}`;addDiagnostic(working,"info",`StoryState extraction scan: ${working.meta.lastScanSummary}`);commitExtractedState(latest,working,working.meta.lastScanSummary,requestNonce);clearScanProgress(requestNonce);tavo.utils.toast(result.changes.length?`StoryState updated ${result.changes.length} item(s).`:hasMoreNow?"StoryState scan complete; more backlog remains.":"StoryState scan: no meaningful changes.")}catch(e){if(runToken!==activeScanToken)return;console.error("[StoryState] extraction failed",e);try{const state=normalizeState(tavo.get(STATE_KEY,"chat")||newState());if(!scanOwnedByRuntime(requestNonce,state))return;state.meta.scanStatus="error";clearScanLease(state);state.meta.lastScanAt=nowIso();state.meta.lastScanSummary=`Extraction failed: ${text(e?.message||"unknown error",300)} Automatic retries are paused; use Scan Now to retry or Reset Scan to clear the error.`;addDiagnostic(state,"error",state.meta.lastScanSummary);if(e?.rawPreview)addDiagnostic(state,"error",`Malformed extractor preview: ${text(e.rawPreview,900)}`);state.revision+=1;tavo.set(STATE_KEY,state,"chat");clearScanProgress(requestNonce);stateCache=normalizeState(tavo.get(STATE_KEY,"chat"));if(!root.hidden)render()}catch(_){ }tavo.utils.toast(`StoryState scan failed. Automatic retries paused: ${e?.message||"unknown error"}`)}finally{if(runToken===activeScanToken){try{const currentRequest=tavo.get(SCAN_REQUEST_KEY,"chat"),currentState=normalizeState(tavo.get(STATE_KEY,"chat"));if(currentRequest?.nonce===requestNonce&&(currentState.meta.scanStatus!=="running"||currentState.meta.scanOwnerId===RUNTIME_ID))tavo.set(SCAN_REQUEST_KEY,null,"chat")}catch(_){ }scanInFlight=false;const finalState=normalizeState(tavo.get(STATE_KEY,"chat"));if(finalState.meta.scanStatus!=="running")clearScanProgress(requestNonce);if(!root.hidden)render()}}}
+  async function runExtractionScan(request={}){if(scanInFlight)return;const suppliedNonce=scanNonce(request),requestNonce=suppliedNonce||uid("scan"),effectiveRequest={...request,type:"scan",nonce:requestNonce};if(!suppliedNonce&&!tavo.get(SCAN_REQUEST_KEY,"chat"))tavo.set(SCAN_REQUEST_KEY,effectiveRequest,"chat");const claimed=claimScan(effectiveRequest);if(!claimed)return;const runToken=++activeScanToken;scanInFlight=true;try{const workingBase=normalizeState(clone(claimed));setScanProgress(requestNonce,"Reading saved story messages");const batch=await collectScanBatch(workingBase);if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;const cadence=int(workingBase.config.scanEveryPosts,2,100,20);if(!batch.messages.length){const latest=loadState();if(!scanOwnedByRuntime(requestNonce,latest))return;const working=normalizeState(clone(latest)),latestFloor=await currentChatFloor();if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;const hasMoreNow=batch.hasMore||(latestFloor>=0&&batch.endFloor<latestFloor);working.meta.scanStatus="idle";clearScanLease(working);working.meta.postsSinceScan=hasMoreNow?cadence:0;working.meta.lastScannedFloor=batch.endFloor>=0?batch.endFloor:working.meta.lastScannedFloor;working.meta.lastScanAt=nowIso();working.meta.lastScanSummary=hasMoreNow?"No narrative state changes in this bounded batch; unscanned messages still remain.":"No new narrative messages to extract.";commitExtractedState(latest,working,working.meta.lastScanSummary,requestNonce);clearScanProgress(requestNonce);return}const chatInfo=await tavo.chat.current().catch(()=>null);if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;setScanProgress(requestNonce,`Analyzing ${batch.messages.length} saved story message(s)`);const prompt=buildExtractionPrompt(workingBase,batch.messages,chatInfo||{}),raw=await withTimeout(tavo.generate(prompt,{context:false,timeout:SCAN_EXTRACT_TIMEOUT_MS,settings:{temperature:0.1,maxCompletionTokens:5000}}),SCAN_EXTRACT_TIMEOUT_MS,"StoryState extraction");if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;setScanProgress(requestNonce,"Parsing extractor response");const parsedResult=await parseExtractionWithOneRepair(raw,()=>setScanProgress(requestNonce,"Repairing malformed JSON once"));if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;setScanProgress(requestNonce,"Applying and verifying StoryState updates");const latest=loadState();if(!scanOwnedByRuntime(requestNonce,latest))return;const proposals=parsedResult.proposals,messageMap=new Map(batch.messages.map(m=>[m.id,m])),reserved=new Set(["tavo","narrator","simulation master",extractionNameKey(chatInfo?.persona?.name),...(Array.isArray(chatInfo?.characters)?chatInfo.characters.map(c=>extractionNameKey(c?.name)):[])].filter(Boolean)),working=normalizeState(clone(latest)),result=applyExtractionProposals(working,proposals,messageMap,reserved),last=batch.messages.at(-1),latestFloor=await currentChatFloor();if(runToken!==activeScanToken||!scanOwnedByRuntime(requestNonce))return;const hasMoreNow=batch.hasMore||(latestFloor>=0&&batch.endFloor<latestFloor);working.meta.postsSinceScan=hasMoreNow?cadence:0;working.meta.lastScannedFloor=batch.endFloor;working.meta.lastScannedMessageId=last?.id??working.meta.lastScannedMessageId;working.meta.lastScanAt=nowIso();working.meta.scanStatus="idle";clearScanLease(working);const prefix=`${parsedResult.repaired?"Extractor JSON repaired once. ":""}${hasMoreNow?"More unscanned messages remain after this bounded batch. ":""}`,detail=result.changes.length?result.changes.slice(0,8).join(" · "):"No meaningful state changes.";working.meta.lastScanSummary=`${prefix}${detail}${result.skipped.length?` · ${result.skipped.length} proposal(s) skipped`:""}`;addDiagnostic(working,"info",`StoryState extraction scan: ${working.meta.lastScanSummary}`);commitExtractedState(latest,working,working.meta.lastScanSummary,requestNonce);clearScanProgress(requestNonce);tavo.utils.toast(result.changes.length?`StoryState updated ${result.changes.length} item(s).`:hasMoreNow?"StoryState scan complete; more backlog remains.":"StoryState scan: no meaningful changes.")}catch(e){if(runToken!==activeScanToken)return;console.error("[StoryState] extraction failed",e);try{const state=normalizeState(tavo.get(STATE_KEY,"chat")||newState());if(!scanOwnedByRuntime(requestNonce,state))return;state.meta.scanStatus="error";clearScanLease(state);state.meta.lastScanAt=nowIso();state.meta.lastScanSummary=`Extraction failed: ${text(e?.message||"unknown error",300)} Automatic retries are paused; use Scan Now to retry or Reset Scan to clear the error.`;addDiagnostic(state,"error",state.meta.lastScanSummary);if(e?.rawPreview)addDiagnostic(state,"error",`Malformed extractor preview: ${text(e.rawPreview,900)}`);state.revision+=1;tavo.set(STATE_KEY,state,"chat");clearScanProgress(requestNonce);stateCache=normalizeState(tavo.get(STATE_KEY,"chat"));if(!root.hidden)render()}catch(_){ }tavo.utils.toast(`StoryState scan failed. Automatic retries paused: ${e?.message||"unknown error"}`)}finally{if(runToken===activeScanToken){try{const currentRequest=tavo.get(SCAN_REQUEST_KEY,"chat"),currentState=normalizeState(tavo.get(STATE_KEY,"chat"));if(currentRequest?.nonce===requestNonce&&(currentState.meta.scanStatus!=="running"||currentState.meta.scanOwnerId===RUNTIME_ID))tavo.set(SCAN_REQUEST_KEY,null,"chat")}catch(_){ }scanInFlight=false;const finalState=normalizeState(tavo.get(STATE_KEY,"chat"));if(finalState.meta.scanStatus!=="running")clearScanProgress(requestNonce);if(!root.hidden)render()}}}
+  const NPC_BACKFILL_MAX_FLOORS=64,NPC_BACKFILL_MAX_CHARS=60000;
+  async function collectNpcBackfillBatch(){
+    const count=await tavo.message.count();if(!count)return {messages:[],startFloor:0,endFloor:-1};
+    const endFloor=count-1,startFloor=Math.max(0,endFloor-NPC_BACKFILL_MAX_FLOORS+1),raw=await tavo.message.find([startFloor,endFloor]),messages=[];let chars=0;
+    for(let i=0;i<(Array.isArray(raw)?raw.length:0);i+=1){const m=raw[i];if(!m||m.hidden||!["user","assistant"].includes(m.role))continue;const content=text(stripStructuredNpcHints(m.content),5000);if(!content||content.includes("<!-- TVL_VISUAL_REFERENCE -->"))continue;if(chars+content.length>NPC_BACKFILL_MAX_CHARS&&messages.length)break;chars+=content.length;messages.push({id:int(m.id,0,1e9,null),role:m.role,content})}
+    return {messages,startFloor,endFloor};
+  }
+  async function runNpcBackfill(){
+    if(scanInFlight)return tavo.utils.toast("StoryState is already scanning.");scanInFlight=true;const runId=uid("npc-recovery");
+    try{
+      setScanProgress(runId,"Indexing recent story characters locally");const before=loadState();if(["queued","running"].includes(before.meta.scanStatus))return tavo.utils.toast("StoryState is already scanning.");const batch=await collectNpcBackfillBatch();if(!batch.messages.length){clearScanProgress(runId);return tavo.utils.toast("NPC recovery found no recent story messages.")}
+      const chatInfo=await tavo.chat.current().catch(()=>null),reserved=auditedReservedNames(chatInfo||{}),candidates=collectAuditedNpcCandidates(batch.messages,reserved);mergeNpcCandidateLedger(before,candidates);const working=normalizeState(clone(before)),result=promoteLocalNpcCandidates(working,candidates,reserved,"local-recovery"),wasRecoveryError=working.meta.scanStatus==="error"&&/^NPC recovery failed:/i.test(String(working.meta.lastScanSummary||""));
+      if(wasRecoveryError){working.meta.scanStatus="idle";clearScanLease(working)}working.meta.lastScanAt=nowIso();working.meta.lastScanSummary=`NPC recovery locally indexed ${batch.messages.length} recent story message(s). ${result.changes.length?result.changes.slice(0,12).join(" · "):"No additional recurring NPCs met the conservative local threshold."}${result.skipped.length?` · ${result.skipped.length} candidate(s) skipped`:""} No model request was used. Normal scan cursor unchanged.`;addDiagnostic(working,"info",`StoryState NPC recovery: ${working.meta.lastScanSummary}`);
+      if(result.changes.length)saveRecovery("Before local StoryState NPC recovery",before);const current=loadState();if(current.revision!==before.revision)throw new Error("StoryState changed while local NPC recovery was finishing; no recovery result was applied.");working.revision=current.revision+1;working.schemaVersion=SCHEMA_VERSION;tavo.set(STATE_KEY,normalizeState(working),"chat");const verified=normalizeState(tavo.get(STATE_KEY,"chat"));if(verified.revision!==working.revision)throw new Error("Local NPC recovery save verification failed.");stateCache=verified;publishCampaignIdentity(verified);clearScanProgress(runId);if(!root.hidden)render();tavo.utils.toast(result.changes.length?`Recovered ${result.changes.length} NPC identit${result.changes.length===1?"y":"ies"} locally.`:"NPC recovery found no additional recurring NPCs.")
+    }catch(e){console.error("[StoryState] local NPC recovery failed",e);clearScanProgress(runId);tavo.utils.toast(`NPC recovery failed locally: ${e?.message||"unknown error"}`)}finally{scanInFlight=false;clearScanProgress(runId)}
+  }
+  function installNpcBackfillControl(){try{if(document.querySelector("#ss-backfill-npcs"))return;const scanNow=document.querySelector("#ss-scan-now"),actions=scanNow?.parentElement;if(!scanNow||!actions||!document.createElement)return;const button=document.createElement("button");button.id="ss-backfill-npcs";button.type="button";button.textContent="Recover NPCs";button.title="Re-check recent saved story history locally for recurring named characters. No model request is made, and the normal scan cursor and non-NPC state are not changed.";button.addEventListener("click",runNpcBackfill);actions.appendChild(button)}catch(e){console.warn("[StoryState] Could not install NPC recovery control",e)}}
+  installNpcBackfillControl();
+  if(typeof __storyStateTestHarness!=="undefined"&&__storyStateTestHarness)Object.assign(__storyStateTestHarness,{NPC_BACKFILL_MAX_FLOORS,NPC_BACKFILL_MAX_CHARS,collectNpcBackfillBatch,runNpcBackfill});
+  // 0.8.0-dev.12: recovered identities stay model-independent; enrichment is a separate,
+  // best-effort action using the same generation settings as the proven normal scan path.
+  const NPC_ENRICH_MAX_TARGETS=8,NPC_ENRICH_MAX_MESSAGES=12,NPC_ENRICH_MAX_CHARS=18000;
+  const NPC_ENRICH_FIELDS=["role","age","pronouns","residence","appearanceAnchor","communicationSignature","pressureResponse","coreValue","currentMotive","contradiction"];
+  function npcProfileRichness(npc){return NPC_ENRICH_FIELDS.reduce((count,key)=>count+(text(npc?.[key],700)?1:0),0)}
+  function messageMentionsNpc(message,npc){const hay=String(message?.content||"").toLowerCase(),names=[npc?.name,...(npc?.aliases||[])].map(v=>text(v,120).toLowerCase()).filter(Boolean);return names.some(name=>hay.includes(name))}
+  function collectNpcEnrichmentTargets(state,messages){
+    const candidates=(state.npcs||[]).filter(active).filter(n=>npcProfileRichness(n)<NPC_ENRICH_FIELDS.length).filter(n=>(messages||[]).some(m=>messageMentionsNpc(m,n)));
+    return candidates.sort((a,b)=>npcProfileRichness(a)-npcProfileRichness(b)||String(b.updatedAt||"").localeCompare(String(a.updatedAt||""))).slice(0,NPC_ENRICH_MAX_TARGETS);
+  }
+  function collectNpcEnrichmentMessages(messages,targets){
+    const source=Array.isArray(messages)?messages:[],selected=new Set();
+    source.forEach((message,index)=>{if(targets.some(n=>messageMentionsNpc(message,n))){selected.add(index);if(index>0)selected.add(index-1);if(index+1<source.length)selected.add(index+1)}});
+    let rows=[...selected].sort((a,b)=>a-b).map(i=>source[i]).filter(Boolean);
+    if(rows.length>NPC_ENRICH_MAX_MESSAGES){const head=rows.slice(0,Math.ceil(NPC_ENRICH_MAX_MESSAGES/2)),tail=rows.slice(-Math.floor(NPC_ENRICH_MAX_MESSAGES/2));rows=[...new Map([...head,...tail].map(m=>[m.id,m])).values()].sort((a,b)=>(Number(a.id)||0)-(Number(b.id)||0))}
+    const out=[];let chars=0;for(const row of rows){const content=text(row.content,5000);if(!content)continue;if(chars+content.length>NPC_ENRICH_MAX_CHARS&&out.length)break;chars+=content.length;out.push({id:int(row.id,0,1e9,null),role:row.role,content})}return out;
+  }
+  function buildNpcEnrichmentPrompt(state,targets,messages){
+    const targetData=targets.map(n=>({id:n.id,name:n.name,aliases:n.aliases||[],existing:Object.fromEntries(NPC_ENRICH_FIELDS.map(key=>[key,text(n[key],700)])),manualOverrides:n.manualOverrides||[]})),story=messages.map(m=>`[${m.id}] ${String(m.role||"").toUpperCase()}: ${m.content}`).join("\n\n");
+    return `You are StoryState's NPC profile enrichment pass. Update ONLY the listed existing NPCs from the supplied saved messages. Do not create NPCs. Do not analyze or return relationships, Knowledge, secrets, world arcs, or protagonist feelings. Return one JSON object immediately, with no prose, reasoning, markdown, or code fence.\n\nTARGET NPCS:\n${JSON.stringify(targetData)}\n\nFIELD RULES:\n- Fill only fields that are currently blank. Omit unsupported or uncertain fields. Never overwrite an existing non-empty field.\n- role: established social/story role or occupation.\n- age: only if explicitly established or a clear stated range.\n- pronouns: only if established by the story.\n- residence: only if the story explicitly establishes where the NPC lives; presence somewhere is not residence.\n- appearanceAnchor: concise stable visual facts, not temporary pose/clothing unless clearly characteristic.\n- communicationSignature: speech/voice only (cadence, vocabulary, dialect, formality, directness); requires at least two supplied messages with actual dialogue from that NPC.\n- pressureResponse: durable psychological/decision pattern under genuine pressure; requires at least two supplied pressure situations. Never use gestures, posture, eye behavior, breathing, or other stage directions.\n- coreValue: only when repeated choices/claims clearly support it.\n- currentMotive: a concrete currently active motive supported by recent supplied evidence.\n- contradiction: a durable internal tension/vulnerability supported by repeated evidence, not a one-scene quirk.\n- Every update must use the exact target npcId and cite real supplied message IDs.\n\nSAVED MESSAGES:\n${story}\n\nRETURN EXACTLY:\n{"npcProposals":[{"action":"update","npcId":"exact existing id","name":"canonical name","fields":{"role":"","age":"","pronouns":"","residence":"","appearanceAnchor":"","communicationSignature":"","pressureResponse":"","coreValue":"","currentMotive":"","contradiction":""},"evidenceMessageIds":[123]}],"relationshipProposals":[],"informationProposals":[],"knowledgeProposals":[],"arcProposals":[]}\nUse [] when no evidence-supported NPC updates exist.`;
+  }
+  function filterNpcEnrichmentProposals(state,proposals,targetIds){
+    const allowed=new Set(targetIds),out=[];
+    for(const proposal of Array.isArray(proposals?.npcProposals)?proposals.npcProposals:[]){
+      if(proposal?.action!=="update")continue;const npc=resolveNpcRef(state,proposal?.npcId,proposal?.name);if(!npc||!allowed.has(npc.id))continue;
+      const fields=proposal?.fields&&typeof proposal.fields==="object"?{...proposal.fields}:{};for(const key of Object.keys(fields))if(!NPC_ENRICH_FIELDS.includes(key)||text(npc[key],700))delete fields[key];
+      if(!Object.values(fields).some(v=>text(v,700)))continue;out.push({...proposal,action:"update",npcId:npc.id,name:npc.name,fields});
+    }
+    return {npcProposals:out,relationshipProposals:[],informationProposals:[],knowledgeProposals:[],arcProposals:[]};
+  }
+  async function runNpcEnrichment(){
+    if(scanInFlight)return tavo.utils.toast("StoryState is already scanning.");scanInFlight=true;const runId=uid("npc-enrich");
+    try{
+      setScanProgress(runId,"Finding sparse NPC profiles in recent history");const before=loadState();if(["queued","running"].includes(before.meta.scanStatus))return tavo.utils.toast("StoryState is already scanning.");const batch=await collectNpcBackfillBatch(),targets=collectNpcEnrichmentTargets(before,batch.messages);
+      if(!targets.length){clearScanProgress(runId);return tavo.utils.toast("No recent NPC profiles need enrichment.")}
+      const selected=collectNpcEnrichmentMessages(batch.messages,targets);if(!selected.length){clearScanProgress(runId);return tavo.utils.toast("No relevant saved messages found for NPC enrichment.")}
+      setScanProgress(runId,`Enriching ${targets.length} NPC profile${targets.length===1?"":"s"} from ${selected.length} saved message(s)`);const prompt=buildNpcEnrichmentPrompt(before,targets,selected),raw=await withTimeout(tavo.generate(prompt,{context:false,timeout:SCAN_EXTRACT_TIMEOUT_MS,settings:{temperature:0.1,maxCompletionTokens:5000}}),SCAN_EXTRACT_TIMEOUT_MS,"StoryState NPC enrichment"),parsedResult=await parseExtractionWithOneRepair(raw,()=>setScanProgress(runId,"Repairing NPC enrichment JSON once"));
+      const current=loadState();if(current.revision!==before.revision){addDiagnostic(current,"info","NPC enrichment result was discarded because StoryState changed while the model request was running. Recovered NPC identities were preserved.");current.revision+=1;tavo.set(STATE_KEY,normalizeState(current),"chat");stateCache=normalizeState(tavo.get(STATE_KEY,"chat"));clearScanProgress(runId);if(!root.hidden)render();return tavo.utils.toast("NPC enrichment skipped because StoryState changed during the request.")}
+      const filtered=filterNpcEnrichmentProposals(current,parsedResult.proposals,targets.map(n=>n.id)),working=normalizeState(clone(current)),messageMap=new Map(selected.map(m=>[m.id,m])),reserved=auditedReservedNames(await tavo.chat.current().catch(()=>null)||{}),result=__ssPreAuditApplyExtractionProposals(working,filtered,messageMap,reserved);
+      working.meta.lastScanAt=nowIso();const detail=result.changes.length?result.changes.slice(0,12).join(" · "):"No additional evidence-supported profile fields were found.";working.meta.lastScanSummary=`NPC enrichment reviewed ${targets.length} sparse profile${targets.length===1?"":"s"} from existing history. ${detail} Normal scan cursor unchanged.`;addDiagnostic(working,"info",`StoryState NPC enrichment: ${working.meta.lastScanSummary}`);if(result.changes.length)saveRecovery("Before StoryState NPC enrichment",current);working.revision=current.revision+1;working.schemaVersion=SCHEMA_VERSION;tavo.set(STATE_KEY,normalizeState(working),"chat");const verified=normalizeState(tavo.get(STATE_KEY,"chat"));if(verified.revision!==working.revision)throw new Error("NPC enrichment save verification failed.");stateCache=verified;publishCampaignIdentity(verified);clearScanProgress(runId);if(!root.hidden)render();tavo.utils.toast(result.changes.length?`NPC enrichment updated ${result.changes.length} profile${result.changes.length===1?"":"s"}.`:"NPC enrichment found no additional supported details.")
+    }catch(e){console.error("[StoryState] NPC enrichment failed",e);try{const state=loadState();addDiagnostic(state,"error",`NPC enrichment failed: ${text(e?.message||"unknown error",300)} Recovered NPC identities and the normal scan cursor were preserved.`);state.revision+=1;tavo.set(STATE_KEY,normalizeState(state),"chat");stateCache=normalizeState(tavo.get(STATE_KEY,"chat"));if(!root.hidden)render()}catch(_){ }clearScanProgress(runId);tavo.utils.toast(`NPC enrichment failed; recovered identities were kept: ${e?.message||"unknown error"}`)}finally{scanInFlight=false;clearScanProgress(runId)}
+  }
+  function installNpcEnrichmentControl(){try{if(document.querySelector("#ss-enrich-npcs"))return;const recover=document.querySelector("#ss-backfill-npcs"),actions=recover?.parentElement;if(!recover||!actions||!document.createElement)return;const button=document.createElement("button");button.id="ss-enrich-npcs";button.type="button";button.textContent="Enrich NPCs";button.title="Use the normal StoryState model request contract to fill missing profile details from recent saved history. Recovery identities remain intact if enrichment fails, and the normal scan cursor is never moved.";button.addEventListener("click",runNpcEnrichment);actions.appendChild(button)}catch(e){console.warn("[StoryState] Could not install NPC enrichment control",e)}}
+  installNpcEnrichmentControl();
+  if(typeof __storyStateTestHarness!=="undefined"&&__storyStateTestHarness)Object.assign(__storyStateTestHarness,{NPC_ENRICH_MAX_TARGETS,NPC_ENRICH_MAX_MESSAGES,NPC_ENRICH_MAX_CHARS,npcProfileRichness,collectNpcEnrichmentTargets,collectNpcEnrichmentMessages,buildNpcEnrichmentPrompt,filterNpcEnrichmentProposals,runNpcEnrichment});
   async function exportState(){const state=loadState(),name=`tavo-storystate-${Date.now()}.json`,payload=JSON.stringify({format:"tavo-storystate",exportedAt:nowIso(),state},null,2);try{if(tavo.file?.export)return await tavo.file.export(name,payload);const blob=new Blob([payload],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500)}catch(e){console.error("[StoryState] Export failed",e);tavo.utils.toast(`Export failed: ${e?.message||"unknown error"}`)}}
   function applyImportedState(parsed){const incoming=normalizeState(parsed.state||parsed),before=loadState();if(!confirm(`Replace current StoryState with ${incoming.npcs.length} NPCs, ${incoming.relationships.length} relationships, and ${incoming.knowledgeItems.length} knowledge items plus ${incoming.arcs.length} world arcs? A recovery snapshot will be saved first.`))return false;saveRecovery("Before StoryState JSON import",before);incoming.revision=before.revision+1;incoming.config.updateMode="manual";tavo.set(STATE_KEY,incoming,"chat");render();tavo.utils.toast("StoryState import complete.");return true}
   async function importStateFile(file){if(!file)return;try{applyImportedState(JSON.parse(await file.text()))}catch(e){console.error("[StoryState] Import failed",e);tavo.utils.toast(`Import failed: ${e?.message||"invalid file"}`)}finally{document.querySelector("#ss-import-file").value=""}}
@@ -764,5 +1078,8 @@ Narrative actions/dialogue are primary evidence. Any tracker/tag text in narrati
   // is never replayed on Tavo startup. New sidebar clicks always carry a fresh nonce.
   try{const initialCommand=tavo.get(UI_COMMAND_KEY,"chat");lastCommandNonce=String(initialCommand?.nonce||"")}catch(_){ }
   setInterval(()=>{try{const command=tavo.get(UI_COMMAND_KEY,"chat"),nonce=String(command?.nonce||"");if(command?.type==="open"&&nonce&&nonce!==lastCommandNonce){lastCommandNonce=nonce;try{tavo.set(UI_COMMAND_KEY,null,"chat")}catch(_){ }openPanel(command?.tab||"npcs")}const current=loadState();if(current.meta.scanStatus==="running"&&recoverStaleRunningScan())return;if(!scanInFlight&&!["queued","running"].includes(current.meta.scanStatus))drainStructuredNpcPending();const request=tavo.get(SCAN_REQUEST_KEY,"chat");if(request?.type==="scan"&&!scanInFlight){const s=loadState();if(request.mode==="automatic"&&s.config.updateMode!=="assisted"){cancelPendingAutomaticScan()}else if(["queued","idle"].includes(s.meta.scanStatus))runExtractionScan(request)}}catch(_){ }},300);
-})();
+})();  try{
+    if(tavo.plugin?.on)tavo.plugin.on("message:added",async event=>{await processLocalNpcDiscoveryMessage(event?.message)});
+  }catch(e){console.warn("[StoryState] Local NPC discovery event hook unavailable",e)}
+
 </script>

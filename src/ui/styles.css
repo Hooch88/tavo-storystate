@@ -1,6 +1,9 @@
 #ss-root{
   position:fixed;
-  inset:0;
+  top:var(--tavo-inset-top-bar, 48px);
+  bottom:var(--tavo-inset-bottom-input, 72px);
+  left:0;
+  right:0;
   z-index:2147483000;
   color-scheme:dark;
   background:#07090e;

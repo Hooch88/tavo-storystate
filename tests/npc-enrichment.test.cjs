@@ -78,6 +78,7 @@ vm.runInNewContext(scripts.at(-1)[1], context, { filename: 'ui/panel.html' });
     assert(prompt.includes("NPC profile enrichment pass"));
     assert(prompt.includes('Dreg') && prompt.includes('Wrenna') && prompt.includes('Harl'));
     assert.strictEqual(options.context, false);
+    assert(options.timeout > 0, 'Enrichment must bound the native model request.');
     assert.strictEqual(options.settings.temperature, 0.1, 'Enrichment must use the normal scan temperature.');
     assert.strictEqual(options.settings.maxCompletionTokens, 5000, 'Enrichment must use the normal scan completion-token budget.');
     return JSON.stringify({

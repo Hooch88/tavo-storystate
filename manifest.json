@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.8.0-dev.12",
+  "version": "0.8.0-dev.13",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -39,5 +39,6 @@
         "mount": "/chat/body/end"
       }
     ]
-  }
+  },
+  "releaseNotes": "Keep panel controls within Tavo layout insets; pass native request timeouts to extraction, repair, and NPC enrichment. Preserves UI vNext and local NPC recovery."
 }

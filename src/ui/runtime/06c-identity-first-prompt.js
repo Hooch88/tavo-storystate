@@ -51,7 +51,7 @@ Use empty arrays for categories with no meaningful delta.`;
     try{return {proposals:parseExtractionResponse(raw),repaired:false}}
     catch(firstError){
       if(typeof onRepair==="function")onRepair();
-      const repairedRaw=await withTimeout(tavo.generate(buildExtractionRepairPrompt(raw),{context:false,settings:{temperature:0.1,maxCompletionTokens:2200}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),"JSON repair");
+      const repairedRaw=await withTimeout(tavo.generate(buildExtractionRepairPrompt(raw),{context:false,timeout:Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),settings:{temperature:0.1,maxCompletionTokens:2200}}),Math.min(SCAN_REPAIR_TIMEOUT_MS,60000),"JSON repair");
       try{
         const proposals=parseExtractionResponse(repairedRaw);
         if(extractionProposalCount(proposals)===0){const err=new Error("Extractor JSON required repair, but the repaired response contained no proposals. The scan cursor was not advanced so this batch can be retried safely.");err.rawPreview=text(raw,900);err.repairedPreview=text(repairedRaw,900);err.repairedEmpty=true;throw err}
