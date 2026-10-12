@@ -380,3 +380,5 @@
 .ss-directory-empty{color:var(--ss-muted);font-size:.72rem;margin:10px 0}
 .ss-directory-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--ss-border);padding-top:8px;font-size:.66rem;color:#8f899a}
 #ss-root .ss-directory-footer button{min-height:32px!important;margin:0!important;padding:4px 8px!important;font-size:.72rem!important;background:transparent!important;border:0!important;color:#cfb9ef!important}
+
+.ss-directory-avatar,.ss-profile-avatar{position:relative;overflow:hidden}.ss-portrait-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}.ss-portrait-image[hidden]{display:none!important}.ss-portrait-editor{display:flex;align-items:center;gap:14px;margin:12px 0 18px}.ss-portrait-editor .ss-profile-avatar{flex:0 0 78px}.ss-portrait-editor p{font-size:.72rem}.ss-profile-actions{gap:8px;flex-wrap:wrap}

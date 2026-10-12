@@ -464,3 +464,19 @@ assert.deepStrictEqual(deletion.relationships.map(r=>r.id),['safe']);
 assert.strictEqual(deletion.knowledgeStates.length,1);
 assert.strictEqual(deletion.knowledgeItems.length,1);
 assert.strictEqual(harness.removeNpcRecords(deletion,'missing'),false);
+
+assert.strictEqual(harness.normalizeNpc({name:'Sarah',portraitPath:'files/global/sarah.jpg'}).portraitPath,'files/global/sarah.jpg');
+assert.strictEqual(harness.normalizeNpc({name:'Sarah',portraitPath:'https://example.com/a.jpg'}).portraitPath,'');
+assert.strictEqual(harness.normalizeNpc({name:'Sarah',portraitPath:'files/global/../secret'}).portraitPath,'');
+const portraitState=harness.newState();portraitState.npcs=[harness.normalizeNpc({name:'Sarah',portraitPath:'files/global/sarah.jpg'})];
+assert.strictEqual(harness.normalizeState(portraitState).npcs[0].portraitPath,'files/global/sarah.jpg');
+
+const portraitCatalogs=new Map([
+ ['chat:tvl_catalog',[{type:'character',name:'Sarah',path:'files/chat/sarah.png'}]],
+ ['global:tvl_catalog',[{type:'character',name:'Wren',path:'files/global/wren.png'},{type:'place',name:'Room',path:'files/global/room.png'}]],
+ ['chat:com.hooch88.tavo.campaignIdentity',{id:'current'}],
+ ['global:tvl_campaign_catalog_v1.current',[{type:'character',name:'Jess',path:'files/global/jess.png'}]],
+ ['global:tvl_campaign_catalog_v1.other',[{type:'character',name:'Secret',path:'files/global/secret.png'}]]
+]);
+const libraryPortraits=harness.collectVisualLibraryPortraits(harness.newState(),(key,scope)=>portraitCatalogs.get(scope+':'+key));
+assert.deepStrictEqual(Array.from(libraryPortraits,r=>r.name),['Sarah','Jess','Wren']);

@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.8.0-dev.17",
+  "version": "0.8.0-dev.18",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -40,5 +40,5 @@
       }
     ]
   },
-  "releaseNotes": "Add confirmed Delete NPC action with a recovery snapshot; remove connected relationships and NPC knowledge records while preserving shared facts and story history."
+  "releaseNotes": "Add uploaded NPC portraits and selection from Visual Library character images in chat, current campaign and global collections. Display portraits in cards and profiles, preserve them through edits and fall back to initials."
 }
