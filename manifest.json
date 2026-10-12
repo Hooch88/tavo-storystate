@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.8.0-dev.15",
+  "version": "0.8.0-dev.16",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -40,5 +40,5 @@
       }
     ]
   },
-  "releaseNotes": "Keep NPC profile inside the safe panel area; move Edit NPC into the profile body; add explicit relationship score editing from each connected relationship."
+  "releaseNotes": "Replace oversized NPC directory tiles with readable cards showing role, residence, motive, appearance and protagonist relationship scores. Add direct Edit scores and View profile actions."
 }
