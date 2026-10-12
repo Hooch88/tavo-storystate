@@ -49,7 +49,8 @@ const tavo = {
   async generate(prompt, options) {
     generateCalls.push({ prompt, options });
     if (generateMode === 'fail') throw new Error('simulated extractor failure');
-    if (generateMode === 'repair-empty') {
+    if (generateMode === 'repair-empty' || generateMode === 'retry-success') {
+      if (generateMode === 'retry-success' && prompt.includes('RETRY:')) return JSON.stringify(emptyExtraction());
       if (/Repair the following StoryState extractor output/.test(prompt)) return JSON.stringify(emptyExtraction());
       return '{"npcProposals": [';
     }
@@ -128,11 +129,23 @@ vm.runInNewContext(scripts.at(-1)[1], context, { filename: 'ui/panel.html' });
   const repairCallsBefore = generateCalls.length;
   await harness.runExtractionScan({ type: 'scan', mode: 'manual' });
   const repairedEmpty = harness.normalizeState(vars.get('storyState.state'));
-  assert.strictEqual(generateCalls.length - repairCallsBefore, 2, 'Malformed extraction should use exactly one bounded repair call.');
+  assert.strictEqual(generateCalls.length - repairCallsBefore, 3, 'Malformed extraction should use one repair and one fresh attempt.');
   assert.strictEqual(repairedEmpty.meta.scanStatus, 'error', 'Repaired-empty extraction must pause instead of being accepted.');
   assert.strictEqual(repairedEmpty.meta.lastScannedFloor, null, 'Repaired-empty extraction must not advance the scan floor.');
   assert.strictEqual(repairedEmpty.meta.lastScannedMessageId, null, 'Repaired-empty extraction must not advance the message cursor.');
-  assert(/repaired response contained no proposals/i.test(repairedEmpty.meta.lastScanSummary));
+  assert(/failed after one fresh attempt/i.test(repairedEmpty.meta.lastScanSummary));
+  assert(repairedEmpty.diagnostics.some(d => /Retry output:/.test(d.text)), 'Failure diagnostics include the retry output.');
+  repairedEmpty.meta.scanStatus = 'idle';
+  vars.set('storyState.state', repairedEmpty);
+  generateMode = 'retry-success';
+  const beforeRetry = generateCalls.length;
+  await harness.runExtractionScan({ type: 'scan', mode: 'manual' });
+  const recovered = harness.normalizeState(vars.get('storyState.state'));
+  assert.strictEqual(generateCalls.length - beforeRetry, 3);
+  assert.strictEqual(recovered.meta.scanStatus, 'idle');
+  assert.strictEqual(recovered.meta.lastScannedFloor, 1);
+  assert(/Fresh extraction retry succeeded/.test(recovered.meta.lastScanSummary));
+  assert(generateCalls.at(-1).prompt.includes('Dreg watches the camp'), 'Fresh retry receives original evidence.');
 
   // Regression based on the fresh Faerun story: NPC recovery is fully local and can recover
   // recurring companions from consumed history without calling the model or touching other state.

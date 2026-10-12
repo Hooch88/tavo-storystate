@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.8.0-dev.13",
+  "version": "0.8.0-dev.14",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -40,5 +40,5 @@
       }
     ]
   },
-  "releaseNotes": "Keep panel controls within Tavo layout insets; pass native request timeouts to extraction, repair, and NPC enrichment. Preserves UI vNext and local NPC recovery."
+  "releaseNotes": "Retry the original story batch once when JSON repair fails, preserve the scan cursor on failure, and report extractor/repair/retry output diagnostics."
 }
