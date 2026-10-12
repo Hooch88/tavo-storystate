@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.8.0-dev.14",
+  "version": "0.8.0-dev.15",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -40,5 +40,5 @@
       }
     ]
   },
-  "releaseNotes": "Retry the original story batch once when JSON repair fails, preserve the scan cursor on failure, and report extractor/repair/retry output diagnostics."
+  "releaseNotes": "Keep NPC profile inside the safe panel area; move Edit NPC into the profile body; add explicit relationship score editing from each connected relationship."
 }
