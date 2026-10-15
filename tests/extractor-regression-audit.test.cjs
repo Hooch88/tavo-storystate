@@ -252,6 +252,42 @@ function clearRuntimeKeys() {
   const playerProposals={npcProposals:[{action:'create',name:'Dakota',admissionReason:'recurring',fields:{},evidenceMessageIds:[20001,20002]},{action:'create',name:'Loving',admissionReason:'recurring',fields:{},evidenceMessageIds:[20001,20002]}],relationshipProposals:[],informationProposals:[],knowledgeProposals:[],arcProposals:[]};
   harness.applyExtractionProposals(playerState,playerProposals,new Map(playerMessages.map(m=>[m.id,m])),excluded);
   assert.strictEqual(playerState.npcs.length,0,'Player names must be excluded even when the model proposes them.');
+  clearRuntimeKeys();
+  const housekeeping=harness.newState();
+  housekeeping.knowledgeItems=[harness.normalizeKnowledgeItem({id:'dinner',statement:'Dakota invited Sarah to dinner tomorrow.',sourceMessageId:100,updatedBy:'extraction',sensitivity:'NORMAL',truth:'TRUE'})];
+  messages=[{id:201,role:'assistant',hidden:false,content:'Sarah says the dinner with Dakota is cancelled because she is leaving town.'}];
+  const archiveProposal={action:'archive',informationId:'dinner',resolution:'cancelled_plan',reason:'Sarah explicitly cancelled the dinner.',evidenceMessageIds:[201],resolutionEvidence:[{messageId:201,quote:'the dinner with Dakota is cancelled'}]};
+  const publicMessages=new Map(messages.map(m=>[m.id,m]));
+  const protectionCases=[
+    {statement:'Sarah was born in Oregon.'},
+    {updatedBy:'manual'},
+    {manualAuthorityThroughMessageId:50},
+    {autoArchiveProtected:true},
+    {sensitivity:'SECRET'},
+    {sourceMessageId:300}
+  ];
+  for(const change of protectionCases){
+    const protectedState=harness.normalizeState(JSON.parse(JSON.stringify(housekeeping)));Object.assign(protectedState.knowledgeItems[0],change);
+    harness.applyKnowledgeArchives(protectedState,[archiveProposal],publicMessages);
+    assert.strictEqual(protectedState.knowledgeItems[0].status,'active','Protected or enduring knowledge must remain active.');
+  }
+  const forged=harness.normalizeState(JSON.parse(JSON.stringify(housekeeping)));
+  harness.applyKnowledgeArchives(forged,[{...archiveProposal,resolutionEvidence:[{messageId:201,quote:'a fabricated resolution not in the story'}]}],publicMessages);
+  assert.strictEqual(forged.knowledgeItems[0].status,'active');
+  const disabled=harness.normalizeState(JSON.parse(JSON.stringify(housekeeping)));disabled.config.autoArchiveKnowledge=false;
+  harness.applyKnowledgeArchives(disabled,[archiveProposal],publicMessages);
+  assert.strictEqual(disabled.knowledgeItems[0].status,'active');
+  vars.set('storyState.state',housekeeping);
+  const requestsBeforeArchive=generateCalls.length;
+  generateHandler=async(prompt)=>{assert(prompt.includes('ARCHIVE REVIEW CANDIDATES'));return JSON.stringify({npcProposals:[],relationshipProposals:[],informationProposals:[archiveProposal],knowledgeProposals:[],arcProposals:[]})};
+  await harness.runExtractionScan({type:'scan',mode:'manual'});
+  const archivedState=harness.normalizeState(vars.get('storyState.state'));
+  assert.strictEqual(archivedState.knowledgeItems.length,1,'Archiving must never delete the fact.');
+  assert.strictEqual(archivedState.knowledgeItems[0].status,'archived');
+  assert.strictEqual(archivedState.knowledgeItems[0].archiveReason,archiveProposal.reason);
+  assert.strictEqual(archivedState.knowledgeItems[0].archiveEvidence[0].messageId,201);
+  assert.strictEqual(generateCalls.length-requestsBeforeArchive,1,'Housekeeping must share the normal extraction request.');
+  assert(vars.get('storyState.recovery')?.storyState,'Archiving must use normal scan recovery snapshots.');
   console.log('StoryState audited extractor regression tests passed.');
 })().catch((error) => {
   console.error(error);
