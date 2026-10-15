@@ -7,9 +7,13 @@
   };
   const __ssPreAuditApplyExtractionProposals=applyExtractionProposals;
   applyExtractionProposals=function(state,proposals,messageMap,reservedNames=new Set()){
+    const rejectedNpc=(id,name)=>{const n=(state.npcs||[]).find(n=>n.id===id);return isReservedNpcName(name||n?.name||"",reservedNames)};
+    const proposalCountBefore=extractionProposalCount(proposals);
+    proposals={...proposals,npcProposals:(proposals.npcProposals||[]).filter(p=>!rejectedNpc(p.npcId,p.name)),relationshipProposals:(proposals.relationshipProposals||[]).filter(p=>!rejectedNpc(p.sourceNpcId,p.sourceName)&&(p.targetType!=="npc"||!rejectedNpc(p.targetNpcId,p.targetName))),knowledgeProposals:(proposals.knowledgeProposals||[]).filter(p=>!rejectedNpc(p.npcId,p.npcName))};
     const currentCandidates=collectAuditedNpcCandidates([...messageMap.values()],reservedNames),ledger=mergeNpcCandidateLedger(state,currentCandidates),augmentedMap=new Map(messageMap);
     for(const item of ledger.items)for(const evidence of item.evidence)if(!augmentedMap.has(evidence.id))augmentedMap.set(evidence.id,{id:evidence.id,role:"assistant",content:evidence.text});
     const beforeNames=new Set((state.npcs||[]).filter(active).map(n=>extractionNameKey(n.name))),result=__ssPreAuditApplyExtractionProposals(state,proposals,augmentedMap,reservedNames),localResult=promoteLocalNpcCandidates(state,currentCandidates,reservedNames,"local-discovery"),afterNames=new Set((state.npcs||[]).filter(active).map(n=>extractionNameKey(n.name))),newNames=[...afterNames].filter(name=>!beforeNames.has(name));
+    if(extractionProposalCount(proposals)<proposalCountBefore)result.skipped.push("Reserved protagonist/persona NPC proposals excluded.");
     if(localResult.changes.length)result.changes.push(...localResult.changes);if(localResult.skipped.length)result.skipped.push(...localResult.skipped);
     mergeNpcCandidateLedger(state,[]);
     const pending=combinedNpcCandidateHints(state,currentCandidates).filter(c=>c.current&&!resolveNpcRef(state,null,c.name)&&localNpcCandidateQualification(c).qualifies);

@@ -240,6 +240,18 @@ function clearRuntimeKeys() {
   sadieState.npcs.push(harness.normalizeNpc({id:'other-sadie',name:'Sadie Jones'}));
   assert.strictEqual(harness.resolveNpcRef(sadieState,null,'Sadie'),null,'Shared first names must not guess an identity.');
   assert.strictEqual(harness.resolveNpcRef(sadieState,null,'Sadie Zheng').id,'sadie-zheng');
+  const titles=harness.newState();titles.npcs=[harness.normalizeNpc({id:'huang',name:'Dr. Huang'})];
+  assert.strictEqual(harness.resolveNpcRef(titles,null,'Huang').id,'huang');
+  assert.strictEqual(harness.resolveNpcRef(titles,null,'Doctor Huang').id,'huang');
+  const excluded=harness.auditedReservedNames({persona:{name:'Loving'}},{protagonistNames:'Loving, Dakota'});
+  assert(excluded.has('loving')&&excluded.has('dakota'));
+  const playerState=harness.newState();playerState.config.protagonistNames='Loving, Dakota';
+  const playerMessages=[{id:20001,role:'assistant',content:'Dakota says hello. Loving asks for help.'},{id:20002,role:'assistant',content:'Dakota walks away. Loving follows him.'}];
+  const playerCandidates=harness.collectAuditedNpcCandidates(playerMessages,excluded);
+  assert(!playerCandidates.some(c=>/dakota|loving/i.test(c.name)));
+  const playerProposals={npcProposals:[{action:'create',name:'Dakota',admissionReason:'recurring',fields:{},evidenceMessageIds:[20001,20002]},{action:'create',name:'Loving',admissionReason:'recurring',fields:{},evidenceMessageIds:[20001,20002]}],relationshipProposals:[],informationProposals:[],knowledgeProposals:[],arcProposals:[]};
+  harness.applyExtractionProposals(playerState,playerProposals,new Map(playerMessages.map(m=>[m.id,m])),excluded);
+  assert.strictEqual(playerState.npcs.length,0,'Player names must be excluded even when the model proposes them.');
   console.log('StoryState audited extractor regression tests passed.');
 })().catch((error) => {
   console.error(error);

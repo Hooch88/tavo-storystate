@@ -20,7 +20,11 @@
     if(parts.some(part=>NPC_CANDIDATE_STOPWORDS.has(part.toLowerCase())||/^(?:i|we|you|he|she|they)['’](?:m|d|ll|ve|re|s)$/i.test(part)))return "";
     return parts.join(" ");
   }
-  function auditedReservedNames(chatInfo={}){return new Set(["tavo","narrator","simulation master",extractionNameKey(chatInfo?.persona?.name),...(Array.isArray(chatInfo?.characters)?chatInfo.characters.map(c=>extractionNameKey(c?.name)):[])].filter(Boolean))}
+  function auditedReservedNames(chatInfo={},config=null){
+    const settings=config||loadState().config,persona=chatInfo?.persona;
+    const names=["tavo","narrator","simulation master",typeof persona==="string"?persona:persona?.name,...(Array.isArray(persona?.aliases)?persona.aliases:[]),...String(settings?.protagonistNames||"").split(/[,;\n]/),...(Array.isArray(chatInfo?.characters)?chatInfo.characters.map(c=>c?.name):[])];
+    return new Set(names.map(npcIdentityKey).filter(Boolean));
+  }
   function collectAuditedNpcCandidates(messages,reservedNames=new Set()){
     const groups=new Map(),pattern=/\b[A-Z][A-Za-z'’\-]{1,35}(?:\s+[A-Z][A-Za-z'’\-]{1,35})?\b/g;
     for(const message of Array.isArray(messages)?messages:[]){

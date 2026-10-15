@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.8.0-dev.19",
+  "version": "0.8.0-dev.20",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -40,5 +40,5 @@
       }
     ]
   },
-  "releaseNotes": "Recognize existing NPC aliases and unambiguous first names in the recurring-candidate guard. Prevent short-name candidates from blocking scans or duplicating tracked full-name NPCs."
+  "releaseNotes": "Match titled NPC names consistently; add per-chat protagonist name exclusions for extraction and local discovery."
 }

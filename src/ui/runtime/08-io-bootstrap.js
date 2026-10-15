@@ -18,4 +18,8 @@
   // is never replayed on Tavo startup. New sidebar clicks always carry a fresh nonce.
   try{const initialCommand=tavo.get(UI_COMMAND_KEY,"chat");lastCommandNonce=String(initialCommand?.nonce||"")}catch(_){ }
   setInterval(()=>{try{const command=tavo.get(UI_COMMAND_KEY,"chat"),nonce=String(command?.nonce||"");if(command?.type==="open"&&nonce&&nonce!==lastCommandNonce){lastCommandNonce=nonce;try{tavo.set(UI_COMMAND_KEY,null,"chat")}catch(_){ }openPanel(command?.tab||"npcs")}const current=loadState();if(current.meta.scanStatus==="running"&&recoverStaleRunningScan())return;if(!scanInFlight&&!["queued","running"].includes(current.meta.scanStatus))drainStructuredNpcPending();const request=tavo.get(SCAN_REQUEST_KEY,"chat");if(request?.type==="scan"&&!scanInFlight){const s=loadState();if(request.mode==="automatic"&&s.config.updateMode!=="assisted"){cancelPendingAutomaticScan()}else if(["queued","idle"].includes(s.meta.scanStatus))runExtractionScan(request)}}catch(_){ }},300);
+  document.querySelector("#ss-protagonist-names").addEventListener("change",event=>{
+    const names=text(event.target.value,500);persist(state=>{state.config.protagonistNames=names;addDiagnostic(state,"info","Updated protagonist names excluded from NPC extraction.")},"Protagonist exclusions saved.");
+  });
+
 })();
