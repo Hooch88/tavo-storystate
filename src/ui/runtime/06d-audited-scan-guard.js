@@ -12,7 +12,7 @@
     const beforeNames=new Set((state.npcs||[]).filter(active).map(n=>extractionNameKey(n.name))),result=__ssPreAuditApplyExtractionProposals(state,proposals,augmentedMap,reservedNames),localResult=promoteLocalNpcCandidates(state,currentCandidates,reservedNames,"local-discovery"),afterNames=new Set((state.npcs||[]).filter(active).map(n=>extractionNameKey(n.name))),newNames=[...afterNames].filter(name=>!beforeNames.has(name));
     if(localResult.changes.length)result.changes.push(...localResult.changes);if(localResult.skipped.length)result.skipped.push(...localResult.skipped);
     mergeNpcCandidateLedger(state,[]);
-    const pending=combinedNpcCandidateHints(state,currentCandidates).filter(c=>c.current&&!afterNames.has(c.key)&&localNpcCandidateQualification(c).qualifies);
+    const pending=combinedNpcCandidateHints(state,currentCandidates).filter(c=>c.current&&!resolveNpcRef(state,null,c.name)&&localNpcCandidateQualification(c).qualifies);
     if(!newNames.length&&pending.length){const names=pending.slice(0,5).map(c=>c.name).join(", ");const err=new Error(`Extractor omitted strong recurring NPC candidate${pending.length===1?"":"s"}: ${names}. Local identity admission could not safely promote the candidate, so the scan cursor was not advanced.`);err.rawPreview=`Pending NPC candidates: ${pending.slice(0,8).map(c=>`${c.name} [${c.evidence.map(e=>e.id).join(", ")}]`).join(" · ")}`;throw err}
     return result;
   };

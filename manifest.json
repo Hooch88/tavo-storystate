@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.8.0-dev.18",
+  "version": "0.8.0-dev.19",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -40,5 +40,5 @@
       }
     ]
   },
-  "releaseNotes": "Add uploaded NPC portraits and selection from Visual Library character images in chat, current campaign and global collections. Display portraits in cards and profiles, preserve them through edits and fall back to initials."
+  "releaseNotes": "Recognize existing NPC aliases and unambiguous first names in the recurring-candidate guard. Prevent short-name candidates from blocking scans or duplicating tracked full-name NPCs."
 }

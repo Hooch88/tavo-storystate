@@ -223,6 +223,23 @@ function clearRuntimeKeys() {
   assert.strictEqual(liveAdmitted.npcs[0].name, 'Dreg');
   assert.strictEqual(generateCalls.length, 0, 'Incremental local NPC admission must not call the model.');
 
+  // An already tracked full name/alias must not become a missing identity gate.
+  clearRuntimeKeys();
+  messages=[{id:10301,role:'assistant',hidden:false,content:'Sadie says she wants to move into the room.'},{id:10303,role:'assistant',hidden:false,content:'Sadie asks Dakota about the roommate vacancy.'}];
+  const sadieState=harness.newState();
+  sadieState.npcs=[harness.normalizeNpc({id:'sadie-zheng',name:'Sadie Zheng',aliases:['Sadie']})];
+  vars.set('storyState.state',sadieState);
+  generateHandler=async()=>JSON.stringify({npcProposals:[],relationshipProposals:[],informationProposals:[],knowledgeProposals:[],arcProposals:[]});
+  await harness.runExtractionScan({type:'scan',mode:'manual'});
+  const sadieResult=harness.normalizeState(vars.get('storyState.state'));
+  assert.strictEqual(sadieResult.meta.scanStatus,'idle');
+  assert.strictEqual(sadieResult.meta.lastScannedMessageId,10303);
+  assert.strictEqual(sadieResult.npcs.length,1,'Short-name evidence must not duplicate a tracked full-name NPC.');
+  sadieState.npcs[0].aliases=[];
+  assert.strictEqual(harness.resolveNpcRef(sadieState,null,'Sadie').id,'sadie-zheng');
+  sadieState.npcs.push(harness.normalizeNpc({id:'other-sadie',name:'Sadie Jones'}));
+  assert.strictEqual(harness.resolveNpcRef(sadieState,null,'Sadie'),null,'Shared first names must not guess an identity.');
+  assert.strictEqual(harness.resolveNpcRef(sadieState,null,'Sadie Zheng').id,'sadie-zheng');
   console.log('StoryState audited extractor regression tests passed.');
 })().catch((error) => {
   console.error(error);
