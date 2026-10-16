@@ -21,6 +21,8 @@ for (const tab of ["npcs", "relationships", "knowledge", "world", "activity", "s
 assert.ok(panel.includes("tavo.file.export"), "export must use Tavo native file API");
 assert.ok(panel.includes("tavo.file.import"), "import must use Tavo native file API");
 assert.ok(panel.includes("tavo.file.load"), "import must load selected native file");
+assert.ok(panel.includes("ss-copy-diagnostics"), "diagnostics copy action missing");
+assert.ok(panel.includes("copyDiagnosticsText"), "diagnostics clipboard handler missing");
 assert.ok(panel.includes("SCHEMA_VERSION=12"), "schema 12 baseline changed unexpectedly");
 assert.ok(panel.includes("SCAN_LEASE_TIMEOUT_MS"), "scan lease/recovery guard missing");
 assert.ok(panel.includes("STRUCTURED_HINT_PENDING_KEY"), "structured NPC hint support missing");

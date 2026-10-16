@@ -2,7 +2,7 @@
     try {
       tavo.set(UI_COMMAND_KEY, {
         type: "open",
-        tab: "npcs",
+        tab: "overview",
         nonce: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
       }, "chat");
     } catch (error) {
@@ -18,8 +18,8 @@
       const message = event?.message;
       if (!message || message.hidden || !["user", "assistant"].includes(message.role)) return;
       const content = String(message.content || "");
-      // Companion plugins may append assistant-side utility bubbles. They are not
-      // story posts and must not advance the extraction cadence or become evidence.
+      // Companion plugins may append assistant-side utility bubble
+      // markers. These are not story posts and must not advance extraction cadence.
       if (content.includes("<!-- TVL_VISUAL_REFERENCE -->")) return;
 
       const state = tavo.get(STATE_KEY, "chat");
