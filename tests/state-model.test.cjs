@@ -480,3 +480,12 @@ const portraitCatalogs=new Map([
 ]);
 const libraryPortraits=harness.collectVisualLibraryPortraits(harness.newState(),(key,scope)=>portraitCatalogs.get(scope+':'+key));
 assert.deepStrictEqual(Array.from(libraryPortraits,r=>r.name),['Sarah','Jess','Wren']);
+
+const portraitMerge = harness.newState();
+portraitMerge.npcs = [harness.normalizeNpc({id:'primary',name:'Sarah'}),harness.normalizeNpc({id:'dupe',name:'Dr Sarah',portraitPath:'files/global/sarah.jpg'})];
+harness.mergeNpcRecords(portraitMerge,'primary','dupe');
+assert.strictEqual(portraitMerge.npcs[0].portraitPath,'files/global/sarah.jpg','Merge must inherit a duplicate portrait when the primary has none.');
+const chosenPortraitMerge = harness.newState();
+chosenPortraitMerge.npcs = [harness.normalizeNpc({id:'primary',name:'Sarah',portraitPath:'files/global/chosen.jpg'}),harness.normalizeNpc({id:'dupe',name:'Dr Sarah',portraitPath:'files/global/other.jpg'})];
+harness.mergeNpcRecords(chosenPortraitMerge,'primary','dupe');
+assert.strictEqual(chosenPortraitMerge.npcs[0].portraitPath,'files/global/chosen.jpg','Merge must preserve the primary portrait.');

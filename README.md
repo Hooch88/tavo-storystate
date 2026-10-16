@@ -1,6 +1,7 @@
 # Tavo StoryState
 
-**Current development baseline:** `0.8.0-dev.12`  
+**Current maintenance build:** `0.8.0-dev.22` on `codex/tavo-1.7.0` (not yet merged into `main`)
+
 **State schema:** 12  
 **Tavo plugin spec:** 2
 
@@ -17,7 +18,7 @@ StoryState 0.8 includes:
 - directional NPC → protagonist and NPC → NPC relationships with configurable axes;
 - consequential Knowledge & Secrets with directional NPC knowledge states;
 - finite World Arcs with active/dormant/resolved lifecycle and manual director nudges;
-- Home dashboard, NPC directory/detail pages, diagnostics, and initials-based avatar placeholders;
+- Home dashboard, NPC directory/detail pages, diagnostics, uploaded or Visual Library portraits with initials as fallback;
 - conservative batched assisted extraction plus manual **Scan Now**;
 - local **Recover NPCs** for recent already-consumed history with zero model calls and without moving the normal scan cursor;
 - separate **Enrich NPCs** for filling missing profile fields from relevant saved history using the normal scan model contract;

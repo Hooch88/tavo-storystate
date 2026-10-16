@@ -260,6 +260,9 @@ function clearRuntimeKeys() {
   const publicMessages=new Map(messages.map(m=>[m.id,m]));
   const protectionCases=[
     {statement:'Sarah was born in Oregon.'},
+    {statement:'University policy requires visitors to leave by midnight until further notice.'},
+    {statement:'Sarah holds a permanent appointment as resident advisor.'},
+    {statement:'University law requires a meeting before every room reassignment.'},
     {updatedBy:'manual'},
     {manualAuthorityThroughMessageId:50},
     {autoArchiveProtected:true},

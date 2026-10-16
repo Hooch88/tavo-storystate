@@ -4,7 +4,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.8.0-dev.21",
+  "version": "0.8.0-dev.22",
   "minAppVersion": "0.93.0",
   "entry": "entry.js",
   "author": "Hooch88",
@@ -40,5 +40,5 @@
       }
     ]
   },
-  "releaseNotes": "Automatically archive resolved temporary public plans using newer quoted evidence during normal scans. Preserve manual edits, secrets and enduring facts; add Show archived knowledge, restore protection, and a Settings toggle."
+  "releaseNotes": "Preserve NPC portraits during duplicate merges and exclude durable rules and policies from automatic knowledge archiving."
 }

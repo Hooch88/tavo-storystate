@@ -1,7 +1,9 @@
   // Archive only transient public plans with newer, quoted resolution evidence.
   // Preserve durable facts, protected edits and the directional knowledge ledger.
   function isTemporaryKnowledge(item){
-    return /\b(plan(?:s|ned)? to|scheduled|invited?|invitation|appointment|deadline|expires?|until|temporary|reserved|reservation|rain check|meeting|meet at|meet on|tonight|tomorrow|this (?:evening|afternoon|morning)|due (?:on|by|at)|vacan(?:t|cy))\b/i.test(item?.statement||"");
+    // A time word alone must never make a durable rule or personal fact disposable.
+    if(/\b(law|laws|policy|policies|rule|rules|permanent|enduring|always|every|belief|believes?|promise|promised|consequence|consequences)\b/i.test(item?.statement||""))return false;
+    return /\b(plan(?:s|ned)? to|scheduled|invited?|invitation|appointment|deadline|expires?|temporary|reserved|reservation|rain check|meeting|meet at|meet on|tonight|tomorrow|this (?:evening|afternoon|morning)|due (?:on|by|at)|vacan(?:t|cy))\b/i.test(item?.statement||"");
   }
   function knowledgeArchiveCandidates(state){
     if(state.config.autoArchiveKnowledge===false)return [];
